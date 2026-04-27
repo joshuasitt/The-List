@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The List</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="The List">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <meta name="theme-color" content="#1a202c">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { colors: { base: '#FAFAF8', sidebar: '#F5F4F0' }, fontFamily: { sans: ['-apple-system','BlinkMacSystemFont','SF Pro Display','Segoe UI','sans-serif'] } } } }</script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #FAFAF8; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #D1D0CC; border-radius: 2px; }
+
+    .task-check { width: 16px; height: 16px; min-width: 16px; border: 1.5px solid #C7C6C2; border-radius: 50%; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+    .task-check:hover { border-color: #6B7280; }
+    .task-check.done { background: #111; border-color: #111; }
+    .task-check.done::after { content: ''; width: 5px; height: 3px; border-left: 1.5px solid white; border-bottom: 1.5px solid white; transform: rotate(-45deg) translate(0.5px,-0.5px); }
+
+    .task-row:hover .task-actions { opacity: 1; }
+    .task-actions { opacity: 0; transition: opacity 0.1s; }
+    .task-row.completed .task-title { text-decoration: line-through; color: #9CA3AF; }
+
+    .area-Hiring    { background: #EFF6FF; color: #3B82F6; }
+    .area-Partnerships { background: #F5F3FF; color: #7C3AED; }
+    .area-Ops       { background: #FFFBEB; color: #D97706; }
+    .area-Marketing { background: #FDF2F8; color: #DB2777; }
+    .area-Retail    { background: #ECFDF5; color: #059669; }
+    .area-Personal  { background: #F0FDFA; color: #0891B2; }
+    .area-General   { background: #F3F4F6; color: #6B7280; }
+
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13.5px; color: #4B5563; transition: all 0.1s; user-select: none; }
+    .nav-item:hover { background: #ECEAE4; color: #111; }
+    .nav-item.active { background: #E8E5DE; color: #111; font-weight: 500; }
+
+    .quick-input { width: 100%; border: none; outline: none; background: transparent; font-size: 14px; color: #111; }
+    .quick-input::placeholder { color: #9CA3AF; }
+
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: white; border-radius: 12px; width: 480px; max-width: 95vw; }
+
+    .spinner { width: 16px; height: 16px; border: 2px solid #E5E7EB; border-top-color: #374151; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #undo-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; font-size: 13px; padding: 10px 16px; border-radius: 10px; display: flex; align-items: center; gap: 12px; z-index: 200; box-shadow: 0 4px 16px rgba(0,0,0,0.2); transition: opacity 0.2s; }
+    #undo-toast.hidden { opacity: 0; pointer-events: none; }
+
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr) 150px; gap: 6px; }
+    @media (max-width: 900px) { .week-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 600px) { .week-grid { grid-template-columns: 1fr 1fr; } }
+
+    [contenteditable="true"]:focus { outline: none; }
+    [contenteditable="true"]:empty::before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; }
+    textarea { resize: vertical; }
+
+    .day-theme { font-size: 10px; color: #9CA3AF; font-style: italic; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #9CA3AF; margin-bottom: 6px; }
+    .time-badge { font-size: 11px; color: #9CA3AF; background: #F3F4F6; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+
+    .notes-icon { opacity: 0; transition: opacity 0.1s; cursor: pointer; color: #D1D0CC; }
+    .notes-icon:hover { color: #6B7280; }
+    .notes-icon.has-notes { opacity: 1 !important; color: #9CA3AF; }
+    .task-row:hover .notes-icon { opacity: 1; }
+
+    .drag-handle { cursor: grab; color: #D1D0CC; opacity: 0; transition: opacity 0.1s; display: flex; align-items: center; padding: 0 1px; flex-shrink: 0; }
+    .drag-handle:active { cursor: grabbing; }
+    .task-row:hover .drag-handle { opacity: 1; }
+    .task-row.dragging { opacity: 0.35; }
+    .task-row.drag-over-top { border-top: 2px solid #9CA3AF; }
+    .task-row.task-selected { background: #EFF6FF !important; border-radius: 6px; }
+    .task-row.task-selected .drag-handle { opacity: 1; color: #93C5FD; }
+
+    #inline-day-picker { position: fixed; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); padding: 8px; z-index: 200; min-width: 180px; }
+    #inline-day-picker button { display: block; width: 100%; text-align: left; font-size: 13px; padding: 6px 10px; border-radius: 6px; color: #374151; background: none; border: none; cursor: pointer; }
+    #inline-day-picker button:hover { background: #F3F4F6; }
+
+    .top3-slot { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; }
+    .top3-slot:hover { background: #FAFAF8; }
+    .top3-num { font-size: 13px; font-weight: 700; color: #E5E7EB; width: 16px; text-align: center; flex-shrink: 0; }
+    .top3-slot.has-task .top3-num { color: #111; }
+
+    .day-badge { font-size: 11px; padding: 2px 7px; border-radius: 4px; cursor: pointer; white-space: nowrap; border: 1px solid transparent; transition: all 0.1s; }
+    .day-badge.assigned { background: #F3F4F6; color: #6B7280; }
+    .day-badge.assigned:hover { background: #E5E7EB; }
+    .day-badge.unassigned { color: #D1D0CC; }
+    .day-badge.unassigned:hover { color: #9CA3AF; }
+    .day-badge.is-today { background: #FEF3C7; color: #D97706; }
+    .task-notes-wrap { display: none; }
+    .task-notes-wrap.open { display: block; }
+    .task-notes-input { width: 100%; border: none; outline: none; background: transparent; font-size: 12px; color: #6B7280; resize: none; line-height: 1.5; padding: 4px 0 2px 0; }
+    .task-notes-input::placeholder { color: #D1D0CC; }
+
+    /* ── CALENDAR VIEW ── */
+    .cal-container { display: flex; flex: 1; overflow: hidden; }
+    .cal-unscheduled { width: 158px; min-width: 158px; border-right: 1px solid #F0EFEB; display: flex; flex-direction: column; overflow: hidden; background: #FAFAF8; }
+    .cal-unsch-list { flex: 1; overflow-y: auto; padding: 4px 6px; }
+    .cal-unsch-card { padding: 5px 8px; margin-bottom: 3px; background: white; border: 1px solid #F0EFEB; border-radius: 6px; font-size: 12px; color: #374151; cursor: grab; user-select: none; line-height: 1.35; }
+    .cal-unsch-card:hover { border-color: #D1D0CC; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .cal-unsch-card.dragging { opacity: 0.35; }
+    .cal-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .cal-day-headers { display: flex; border-bottom: 1px solid #F0EFEB; flex-shrink: 0; background: white; }
+    .cal-gutter { width: 44px; min-width: 44px; flex-shrink: 0; border-right: 1px solid #F0EFEB; }
+    .cal-day-header-cell { flex: 1; text-align: center; padding: 7px 2px; border-right: 1px solid #F0EFEB; }
+    .cal-day-header-cell:last-child { border-right: none; }
+    .cal-scroll-area { flex: 1; overflow-y: auto; }
+    .cal-grid-body { display: flex; }
+    .cal-hour-col { width: 44px; min-width: 44px; flex-shrink: 0; border-right: 1px solid #F0EFEB; }
+    .cal-hour-label { height: 44px; display: flex; align-items: flex-start; justify-content: flex-end; padding: 2px 7px 0 0; font-size: 10px; color: #C9C8C4; white-space: nowrap; }
+    .cal-days-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); min-width: 0; }
+    .cal-day-col { position: relative; border-right: 1px solid #F0EFEB; overflow: hidden; }
+    .cal-day-col:last-child { border-right: none; }
+    .cal-day-col.cal-today-col { background: #FFFDF7; }
+    .cal-day-col.cal-drop-active { background: #EFF6FF; }
+    .cal-hour-line { position: absolute; left: 0; right: 0; height: 1px; background: #F0EFEB; pointer-events: none; }
+    .cal-half-line { position: absolute; left: 0; right: 0; height: 1px; background: #F7F6F3; pointer-events: none; }
+    .cal-now-line { position: absolute; left: -1px; right: 0; height: 2px; background: #EF4444; z-index: 5; pointer-events: none; }
+    .cal-now-line::before { content: ''; position: absolute; left: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #EF4444; }
+    /* task blocks — GCal-style filled with white text */
+    .cal-task-block { position: absolute; left: 2px; right: 2px; border-radius: 4px; overflow: hidden; z-index: 2; min-height: 18px; cursor: grab; background: #1a73e8; outline: 2px solid white; outline-offset: -1px; }
+    .cal-task-block:hover { filter: brightness(1.08); z-index: 3; }
+    .cal-task-block.cal-type-top3 { background: #D97706; }
+    .cal-task-block.cal-type-smaller { background: #059669; }
+    .cal-task-block.cal-done { opacity: 0.45; }
+    .cal-task-block.cal-moving { opacity: 0.85; z-index: 20; box-shadow: 0 6px 18px rgba(0,0,0,0.2); cursor: grabbing; }
+    .cal-block-inner { padding: 3px 6px; overflow: hidden; height: calc(100% - 7px); }
+    .cal-block-title { font-size: 11.5px; font-weight: 500; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; }
+    .cal-block-time-label { font-size: 10px; color: rgba(255,255,255,0.85); line-height: 1.2; white-space: nowrap; overflow: hidden; }
+    .cal-block-del { position: absolute; top: 2px; right: 3px; font-size: 14px; line-height: 1; color: rgba(255,255,255,0.6); cursor: pointer; opacity: 0; z-index: 5; transition: opacity 0.1s; }
+    .cal-task-block:hover .cal-block-del { opacity: 1; }
+    .cal-block-del:hover { color: white; }
+    .cal-resize-handle { position: absolute; bottom: 0; left: 0; right: 0; height: 7px; cursor: ns-resize; z-index: 4; }
+    .cal-resize-handle:hover { background: rgba(0,0,0,0.12); border-radius: 0 0 4px 4px; }
+    /* gcal events — GCal light-blue style */
+    .cal-gcal-block { position: absolute; left: 2px; right: 2px; border-radius: 4px; overflow: hidden; z-index: 1; background: #e8f0fe; border-left: 3px solid #1a73e8; cursor: pointer; }
+    .cal-gcal-block:hover { background: #d2e3fc; }
+    .cal-gcal-inner { padding: 3px 5px; height: 100%; overflow: hidden; }
+    .cal-gcal-title { font-size: 11px; color: #1967d2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; font-weight: 500; }
+    .cal-gcal-time-label { font-size: 10px; color: #4285f4; line-height: 1.2; }
+    /* day header today circle */
+    .cal-hdr-today-num { width: 30px; height: 30px; border-radius: 50%; background: #1a73e8; display: flex; align-items: center; justify-content: center; margin: 2px auto 0; }
+    .cal-unscheduled.cal-panel-drop-active { background: #EFF6FF; }
+    #cal-gcal-popup { position: fixed; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 12px 14px; z-index: 300; min-width: 210px; max-width: 290px; }
+    .cal-gcal-syncing { opacity: 0.7; }
+  </style>
+</head>
+<body class="font-sans text-gray-900 h-screen flex overflow-hidden">
+
+<!-- SIDEBAR -->
+<div id="sidebar" class="w-44 min-w-44 flex flex-col py-5 px-3 border-r border-gray-200 bg-sidebar overflow-y-auto">
+  <div class="px-2 mb-5">
+    <div class="text-xs font-semibold tracking-widest text-gray-400 uppercase">The List</div>
+  </div>
+  <div class="flex flex-col gap-0.5" id="nav">
+    <div class="nav-item active" data-section="today" onclick="showSection('today')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Today <span id="today-count" class="ml-auto text-xs text-gray-400"></span>
+    </div>
+    <div class="nav-item" data-section="week" onclick="showSection('week')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Master
+    </div>
+    <div class="nav-item" data-section="ideas" onclick="showSection('ideas')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      Ideas <span id="ideas-count" class="ml-auto text-xs text-gray-400"></span>
+    </div>
+    <div class="nav-item" data-section="articles" onclick="showSection('articles')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Articles
+    </div>
+    <div class="nav-item" data-section="meetings" onclick="showSection('meetings')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Meetings
+    </div>
+    <div class="nav-item" data-section="calendar" onclick="showSection('calendar')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="14" x2="12.01" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="16" y1="14" x2="16.01" y2="14" stroke-width="3" stroke-linecap="round"/></svg>
+      Calendar
+    </div>
+    <div class="nav-item" data-section="archive" onclick="showSection('archive')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+      Archive
+    </div>
+  </div>
+  <div class="mt-auto pt-4">
+    <div id="api-status" class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600" onclick="showApiModal()">Set API key</div>
+    <div id="cal-status" class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1" onclick="showCalModal()">Connect Calendar</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main" class="flex-1 overflow-hidden flex flex-col">
+
+  <!-- TODAY -->
+  <section id="section-today" class="flex-1 overflow-hidden flex">
+
+    <!-- Left: Tasks -->
+    <div class="flex-1 overflow-y-auto px-7 py-6">
+      <div class="max-w-xl">
+        <div class="flex items-center gap-2 mb-1">
+          <button onclick="navDay(-1)" class="text-gray-300 hover:text-gray-600 text-lg leading-none px-1">‹</button>
+          <h1 class="text-xl font-semibold flex-1" id="today-heading"></h1>
+          <button onclick="navDay(1)" class="text-gray-300 hover:text-gray-600 text-lg leading-none px-1">›</button>
+          <button onclick="navToday()" id="today-btn" class="hidden text-xs text-amber-500 hover:text-amber-700 mr-1">Today</button>
+          <button onclick="toggleWeekSnap()" id="week-snap-btn" class="text-xs text-gray-400 hover:text-gray-700 border border-gray-200 rounded px-2 py-1">Week</button>
+        </div>
+        <!-- Week snapshot (hidden by default) -->
+        <div id="week-snap" class="hidden mb-5 rounded-xl border border-gray-200 overflow-hidden">
+          <div id="week-snap-grid" class="grid grid-cols-7 divide-x divide-gray-100"></div>
+        </div>
+        <div id="overdue-banner" class="hidden mb-4 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"></div>
+
+        <!-- Overdue tasks -->
+        <div id="overdue-tasks"></div>
+
+        <!-- Main Priorities -->
+        <div class="mb-5">
+          <div class="section-label">Main Priorities</div>
+          <div id="today-main" class="space-y-1"></div>
+          <div id="today-main-empty" class="text-xs text-gray-400 py-2 hidden">Nothing here yet.</div>
+          <div class="flex items-center gap-2 px-3 py-1.5">
+            <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
+            <input id="today-input" class="quick-input text-sm text-gray-500 flex-1" placeholder="Add priority..."
+              onkeydown="if(event.key==='Enter') addTaskToday('main')">
+            <input id="today-time" class="w-12 text-xs text-gray-300 bg-transparent border-none outline-none text-center placeholder:text-gray-200" placeholder="time">
+          </div>
+        </div>
+
+        <!-- Smaller To Do's -->
+        <div class="mb-5">
+          <div class="section-label">Smaller To Do's</div>
+          <div id="today-smaller" class="space-y-1 mb-2"></div>
+          <div class="flex items-center gap-2 px-3 py-1.5">
+            <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
+            <input id="smaller-input" class="quick-input text-sm text-gray-500" placeholder="Add smaller task..."
+              onkeydown="if(event.key==='Enter') addTaskToday('smaller')">
+          </div>
+        </div>
+
+        <!-- Tomorrow's Priorities -->
+        <div>
+          <div class="section-label">Tomorrow's Priorities</div>
+          <div id="tomorrow-tasks" class="space-y-1 mb-2"></div>
+          <div class="flex items-center gap-2 px-3 py-1.5">
+            <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
+            <input id="tomorrow-input" class="quick-input text-sm text-gray-400" placeholder="Add for tomorrow..."
+              onkeydown="if(event.key==='Enter') addTaskTomorrow()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Mindful Moments -->
+    <div class="w-52 min-w-52 border-l border-gray-100 bg-amber-50/40 px-4 py-6 overflow-y-auto">
+      <div class="section-label text-amber-700/60">Mindful Moments</div>
+      <div id="reminders-list" class="space-y-2 mb-3"></div>
+      <div class="flex gap-1">
+        <input id="reminder-input" class="flex-1 text-xs bg-transparent border-none outline-none text-gray-500 placeholder:text-gray-300"
+          placeholder="Add reminder..."
+          onkeydown="if(event.key==='Enter') addReminder()">
+        <button onclick="addReminder()" class="text-amber-600/60 hover:text-amber-700 text-lg leading-none">+</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- WEEK / MASTER -->
+  <section id="section-week" class="hidden flex-1 overflow-auto px-8 py-6">
+    <div class="max-w-xl">
+      <h1 class="text-xl font-semibold mb-5">Master List</h1>
+
+      <!-- Sunday archive prompt -->
+      <div id="archive-banner" class="hidden mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium text-amber-800">New week — archive last week?</div>
+            <div class="text-xs text-amber-600 mt-0.5">Moves your current list to Archive. Bank &amp; completed stay put.</div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0 mt-0.5">
+            <button onclick="archiveCurrentWeek()" class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 font-medium">Archive it</button>
+            <button onclick="document.getElementById('archive-banner').classList.add('hidden')" class="text-xs text-amber-500 hover:text-amber-700">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 3 This Week -->
+      <div class="mb-7 bg-white border border-gray-200 rounded-xl p-4">
+        <div class="section-label mb-3">Top 3 This Week</div>
+        <div id="top3-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Priorities -->
+      <div class="mb-6">
+        <div class="section-label">Priorities</div>
+        <div id="master-main" class="space-y-0.5 min-h-6"
+          ondragover="event.preventDefault()"
+          ondrop="dropOnSection(event,'master-main')"></div>
+        <div class="flex items-center gap-2 px-3 py-1.5">
+          <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
+          <input id="master-input" class="quick-input text-sm text-gray-500" placeholder="Add priority..."
+            onkeydown="if(event.key==='Enter') addMasterTask('main')">
+        </div>
+      </div>
+
+      <!-- Smaller -->
+      <div>
+        <div class="section-label">Smaller</div>
+        <div id="master-smaller" class="space-y-0.5 mb-2 min-h-6"
+          ondragover="event.preventDefault()"
+          ondrop="dropOnSection(event,'master-smaller')"></div>
+        <div class="flex items-center gap-2 px-3 py-1.5">
+          <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
+          <input id="master-smaller-input" class="quick-input text-sm text-gray-500" placeholder="Add smaller task..."
+            onkeydown="if(event.key==='Enter') addMasterTask('smaller')">
+        </div>
+      </div>
+
+      <!-- Bank -->
+      <div class="mt-6 pt-5 border-t border-gray-100">
+        <div class="section-label mb-1">Bank</div>
+        <div class="text-xs text-gray-400 mb-3 -mt-1">Future &amp; potential items</div>
+        <div id="master-bank" class="space-y-0.5 mb-2 min-h-6"
+          ondragover="event.preventDefault()"
+          ondrop="dropOnSection(event,'master-bank')"></div>
+        <div class="flex items-center gap-2 px-3 py-1.5">
+          <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
+          <input id="master-bank-input" class="quick-input text-sm text-gray-400" placeholder="Add to bank..."
+            onkeydown="if(event.key==='Enter') addMasterTask('bank')">
+        </div>
+      </div>
+
+      <!-- Completed / Archive -->
+      <div id="master-completed-wrap" class="mt-6 pt-5 border-t border-gray-100 hidden">
+        <button onclick="toggleMasterArchive()" class="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 mb-3">
+          <svg id="archive-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span id="archive-label">Completed</span>
+        </button>
+        <div id="master-completed" class="hidden space-y-0.5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IDEAS -->
+  <section id="section-ideas" class="hidden flex-1 overflow-y-auto px-8 py-6">
+    <div class="max-w-2xl">
+      <h1 class="text-xl font-semibold mb-5">Ideas</h1>
+      <div class="flex gap-3 mb-6">
+        <input id="idea-input" class="flex-1 bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400"
+          placeholder="Drop an idea..." onkeydown="if(event.key==='Enter') addIdea()">
+        <button onclick="addIdea()" class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700">Add</button>
+      </div>
+      <div id="ideas-list" class="space-y-2"></div>
+      <div id="ideas-empty" class="hidden text-sm text-gray-400 py-4">No ideas yet.</div>
+    </div>
+  </section>
+
+  <!-- ARTICLES -->
+  <section id="section-articles" class="hidden flex-1 overflow-y-auto px-8 py-6">
+    <div class="max-w-2xl">
+      <h1 class="text-xl font-semibold mb-5">Articles</h1>
+      <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6">
+        <div class="flex gap-2 mb-3">
+          <button id="tab-url" onclick="setArticleTab('url')" class="px-3 py-1 rounded-md bg-gray-900 text-white text-xs">URL</button>
+          <button id="tab-text" onclick="setArticleTab('text')" class="px-3 py-1 rounded-md bg-gray-100 text-gray-600 text-xs hover:bg-gray-200">Paste text</button>
+        </div>
+        <div id="article-url-input">
+          <input id="article-url" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400 mb-3" placeholder="https://...">
+        </div>
+        <div id="article-text-input" class="hidden">
+          <textarea id="article-text" rows="5" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400 mb-3" placeholder="Paste article text..."></textarea>
+        </div>
+        <button onclick="summarizeArticle()" id="summarize-btn" class="bg-gray-900 text-white text-sm px-5 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2">Summarize</button>
+        <div id="article-result" class="hidden mt-5 pt-5 border-t border-gray-100">
+          <div id="article-summary" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
+          <button onclick="saveArticleSummaryToIdea()" class="mt-3 text-xs text-gray-400 hover:text-gray-700">→ Save to Ideas</button>
+        </div>
+      </div>
+      <div class="space-y-3" id="articles-list"></div>
+    </div>
+  </section>
+
+  <!-- MEETINGS -->
+  <section id="section-meetings" class="hidden flex-1 overflow-hidden flex">
+    <div id="meeting-list-panel" class="w-64 min-w-64 border-r border-gray-200 flex flex-col overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <span class="font-medium text-sm">Meetings</span>
+        <button onclick="newMeeting()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700">+ New</button>
+      </div>
+      <div class="overflow-y-auto flex-1 p-3 space-y-1" id="meeting-list"></div>
+    </div>
+    <div id="meeting-detail-panel" class="flex-1 overflow-y-auto px-8 py-6">
+      <div id="meeting-placeholder" class="text-sm text-gray-400 mt-20 text-center">Select a meeting or create a new one</div>
+      <div id="meeting-detail" class="hidden max-w-2xl">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <input id="m-title" class="w-full text-xl font-semibold bg-transparent border-none outline-none mb-1" placeholder="Meeting title" oninput="debounceSaveMeeting()">
+            <div class="flex gap-3">
+              <input id="m-date" type="date" class="text-sm text-gray-500 bg-transparent border-none outline-none" oninput="debounceSaveMeeting()">
+              <input id="m-attendees" class="flex-1 text-sm text-gray-500 bg-transparent border-none outline-none" placeholder="Attendees (emails, comma separated)" oninput="debounceSaveMeeting()">
+            </div>
+          </div>
+          <button onclick="deleteMeeting()" class="ml-4 text-xs text-gray-300 hover:text-red-400">Delete</button>
+        </div>
+        <div class="mb-5">
+          <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Notes</div>
+          <textarea id="m-notes" rows="8" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400 leading-relaxed" placeholder="Paste your notes..." oninput="debounceSaveMeeting()"></textarea>
+        </div>
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Action Items</div>
+            <button onclick="extractActions()" id="extract-btn" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">Extract from notes</button>
+          </div>
+          <div id="m-actions" class="space-y-1.5"></div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Follow-up Email</div>
+            <button onclick="generateEmail()" id="email-btn" class="text-xs bg-gray-900 text-white hover:bg-gray-700 px-3 py-1.5 rounded-md flex items-center gap-1.5">Draft email</button>
+          </div>
+          <div id="m-email-container" class="hidden">
+            <textarea id="m-email" rows="10" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400 font-mono leading-relaxed" oninput="debounceSaveMeeting()"></textarea>
+            <div class="flex gap-2 mt-2">
+              <button onclick="copyEmail()" class="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 bg-gray-100 rounded-md">Copy</button>
+              <button onclick="openEmailDraft()" class="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 bg-gray-100 rounded-md">Open in Mail</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section id="section-calendar" class="hidden flex-1 overflow-hidden flex flex-col">
+    <div class="px-4 py-2.5 border-b border-gray-100 flex items-center gap-1 flex-shrink-0">
+      <button onclick="calPrevWeek()" class="text-gray-300 hover:text-gray-600 text-xl leading-none px-1">‹</button>
+      <span id="cal-week-label" class="text-sm font-medium text-gray-700 px-1"></span>
+      <button onclick="calNextWeek()" class="text-gray-300 hover:text-gray-600 text-xl leading-none px-1">›</button>
+      <button onclick="calThisWeek()" id="cal-today-btn" class="hidden text-xs text-amber-500 hover:text-amber-700 ml-2">This week</button>
+    </div>
+    <div class="cal-container">
+      <div class="cal-unscheduled" id="cal-unscheduled-panel"
+        ondragover="calPanelDragOver(event)"
+        ondragleave="calPanelDragLeave(event)"
+        ondrop="calPanelDrop(event)">
+        <div class="px-3 pt-3 pb-1 flex-shrink-0">
+          <div class="section-label">Unscheduled</div>
+          <div class="text-xs text-gray-400 -mt-1 mb-2">Drag to schedule →</div>
+        </div>
+        <div class="cal-unsch-list" id="cal-unsch-list"></div>
+      </div>
+      <div class="cal-main">
+        <div class="cal-day-headers" id="cal-day-headers">
+          <div class="cal-gutter"></div>
+        </div>
+        <div class="cal-scroll-area" id="cal-scroll-area">
+          <div class="cal-grid-body">
+            <div class="cal-hour-col" id="cal-hour-col"></div>
+            <div class="cal-days-grid" id="cal-days-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHIVE -->
+  <section id="section-archive" class="hidden flex-1 overflow-auto px-8 py-6">
+    <div class="max-w-xl">
+      <h1 class="text-xl font-semibold mb-1">Archive</h1>
+      <p class="text-sm text-gray-400 mb-6">Past weeks. Hover any open item to pull it back to this week.</p>
+      <div id="archive-list"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- GCAL EVENT POPUP -->
+<div id="cal-gcal-popup" class="hidden"></div>
+
+<!-- INLINE DAY PICKER -->
+<div id="inline-day-picker" class="hidden" onmouseleave="closeInlineDayPicker()"></div>
+
+<!-- RESCHEDULE POPUP -->
+<div id="reschedule-modal" class="hidden fixed inset-0 z-50" onclick="closeRescheduleModal(event)">
+  <div id="reschedule-popup" class="absolute bg-white border border-gray-200 rounded-xl shadow-xl p-4 w-60">
+    <div class="text-xs font-medium text-gray-400 uppercase mb-3">Move to</div>
+    <div id="reschedule-days" class="space-y-1"></div>
+    <div class="border-t border-gray-100 mt-3 pt-3">
+      <input type="date" id="reschedule-custom" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none" onchange="rescheduleToDate(this.value)">
+    </div>
+    <button onclick="rescheduleToDate(null)" class="mt-2 text-xs text-red-400 hover:text-red-600 w-full text-left">Remove from schedule</button>
+  </div>
+</div>
+
+<!-- UNDO TOAST -->
+<div id="undo-toast" class="hidden">
+  <span id="undo-msg">Task deleted</span>
+  <button onclick="undoDelete()" style="color:#FCD34D;font-weight:600;background:none;border:none;cursor:pointer;padding:0">Undo</button>
+</div>
+
+<!-- CALENDAR MODAL -->
+<div id="cal-modal" class="hidden modal-bg" onclick="closeCalModal(event)">
+  <div class="modal p-6" onclick="event.stopPropagation()">
+    <h2 class="font-semibold mb-1">Google Calendar</h2>
+    <div id="cal-connected-view" class="hidden">
+      <p class="text-sm text-green-600 mb-4">✓ Connected to Google Calendar</p>
+      <button onclick="disconnectCal()" class="text-xs text-red-400 hover:text-red-600">Disconnect</button>
+    </div>
+    <div id="cal-setup-view">
+      <p class="text-sm text-gray-500 mb-4">Enter your Google OAuth credentials. <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-500 underline">Get them here</a> — create a project, enable Calendar API, add OAuth 2.0 credentials (Web App), set redirect URI to <code class="bg-gray-100 px-1 rounded text-xs">http://localhost:8000/auth/google/callback</code></p>
+      <input id="cal-client-id" type="text" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none mb-3 font-mono" placeholder="Client ID">
+      <input id="cal-client-secret" type="password" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none mb-4 font-mono" placeholder="Client Secret">
+      <div class="flex gap-2 justify-end">
+        <button onclick="closeCalModal()" class="text-sm text-gray-500 px-4 py-2">Cancel</button>
+        <button onclick="saveCalCreds()" class="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div id="api-modal" class="hidden modal-bg" onclick="closeApiModal(event)">
+  <div class="modal p-6" onclick="event.stopPropagation()">
+    <h2 class="font-semibold mb-1">Anthropic API Key</h2>
+    <p class="text-sm text-gray-500 mb-4">Required for article summaries and email generation.</p>
+    <input id="api-key-input" type="password" class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none mb-4 font-mono" placeholder="sk-ant-...">
+    <div class="flex gap-2 justify-end">
+      <button onclick="closeApiModal()" class="text-sm text-gray-500 px-4 py-2">Cancel</button>
+      <button onclick="saveApiKey()" class="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ─────────────────────────────────────────────────────────────
+
+const DAY_THEMES = {
+  1: 'Internal Meetings',
+  2: 'Team + Partners',
+  3: 'No Meetings',
+  4: 'External / R&D',
+  5: 'Busy Work + Reading',
+  6: 'Weekend',
+  0: 'Weekend',
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+
+const state = {
+  section: 'today',
+  today: formatDate(new Date()),
+  viewDay: formatDate(new Date()),
+  weekStart: getMonday(new Date()),
+  reminders: [],
+  selectedMeetingId: null,
+  articleTab: 'url',
+  lastSummary: '',
+  rescheduleTaskId: null,
+  _backlogTitles: [],
+  _tasksCache: [],
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────
+
+function formatDate(d) { return d.toISOString().split('T')[0] }
+function getMonday(d) {
+  const date = new Date(d); const day = date.getDay()
+  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day))
+  date.setHours(0,0,0,0); return date
+}
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r }
+function isPast(s) { return s && s < state.today }
+function isToday(s) { return s === state.today }
+function fmtDisplayDate(s) {
+  if (!s) return ''
+  return new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
+}
+function fmtDayHeading(s) {
+  return new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
+}
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms) } }
+function taskBefore(id) { return state._tasksCache.find(t => t.id === id) }
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} }
+  if (body) opts.body = JSON.stringify(body)
+  return (await fetch(path, opts)).json()
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+
+function showSection(name) {
+  state.section = name
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.section===name))
+  document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.toggle('hidden', el.id!==`section-${name}`))
+  if (name==='today') renderToday()
+  if (name==='week') renderWeek()
+  if (name==='ideas') renderIdeas()
+  if (name==='articles') renderArticles()
+  if (name==='meetings') renderMeetings()
+  if (name==='calendar') renderCalendar()
+  if (name==='archive') renderArchive()
+}
+
+// ── TODAY ─────────────────────────────────────────────────────────────────
+
+function navDay(delta) {
+  state.viewDay = formatDate(addDays(new Date(state.viewDay), delta))
+  document.getElementById('today-btn')?.classList.toggle('hidden', state.viewDay === state.today)
+  renderToday()
+}
+function navToday() {
+  state.viewDay = state.today
+  document.getElementById('today-btn')?.classList.add('hidden')
+  renderToday()
+}
+
+async function renderToday() {
+  const tomorrow = formatDate(addDays(new Date(state.viewDay), 1))
+  let [todayTasks, tomorrowTasks, allTasks] = await Promise.all([
+    api('GET', `/api/tasks?date=${state.viewDay}`),
+    api('GET', `/api/tasks?date=${tomorrow}`),
+    api('GET', '/api/tasks'),
+  ])
+  todayTasks = filterPending(todayTasks)
+  tomorrowTasks = filterPending(tomorrowTasks)
+  allTasks = filterPending(allTasks)
+  state._tasksCache = allTasks
+
+  document.getElementById('today-heading').textContent = fmtDayHeading(state.viewDay)
+
+  // overdue — only show on actual today
+  const overdue = state.viewDay === state.today
+    ? allTasks.filter(t => t.scheduled_date && isPast(t.scheduled_date) && !t.completed && t.task_type !== 'bank')
+    : []
+  const banner = document.getElementById('overdue-banner')
+  const overdueEl = document.getElementById('overdue-tasks')
+  if (overdue.length > 0) {
+    banner.textContent = `${overdue.length} overdue task${overdue.length>1?'s':''} from previous days`
+    banner.classList.remove('hidden')
+    overdueEl.innerHTML = `<div class="mb-4 space-y-1">${overdue.map(t=>taskRow(t,true)).join('')}</div>`
+  } else {
+    banner.classList.add('hidden')
+    overdueEl.innerHTML = ''
+  }
+
+  // main priorities
+  const main = todayTasks.filter(t => (t.task_type||'main')==='main' || t.task_type==='top3')
+  const smaller = todayTasks.filter(t => t.task_type==='smaller')
+  const mainEl = document.getElementById('today-main')
+  const mainEmpty = document.getElementById('today-main-empty')
+  mainEl.innerHTML = main.map(t=>taskRow(t)).join('')
+  mainEmpty.classList.toggle('hidden', main.length > 0)
+
+  // smaller
+  document.getElementById('today-smaller').innerHTML = smaller.map(t=>taskRowSmall(t)).join('')
+
+  // tomorrow
+  document.getElementById('tomorrow-tasks').innerHTML = tomorrowTasks.filter(t => t.task_type !== 'bank').slice(0,5).map(t=>taskRowSmall(t,true)).join('')
+
+  // count
+  const remaining = todayTasks.filter(t=>!t.completed).length
+  document.getElementById('today-count').textContent = remaining > 0 ? remaining : ''
+}
+
+function taskRow(task, showDate=false) {
+  const done = task.completed
+  const timeStr = task.time_estimate ? `<span class="time-badge">${esc(task.time_estimate)}</span>` : ''
+  const hasNotes = task.notes && task.notes.trim()
+  return `
+  <div class="task-row flex flex-col py-2 px-3 rounded-lg hover:bg-white group ${done?'completed':''}" id="task-${task.id}"
+    draggable="true"
+    onclick="taskRowClick(event,${task.id})"
+    ondragstart="dragStart(event,${task.id})"
+    ondragover="dragOver(event,${task.id})"
+    ondragleave="dragLeave(event,${task.id})"
+    ondragend="dragEnd(${task.id})"
+    ondrop="dragDrop(event,${task.id})">
+    <div class="flex items-center gap-2.5">
+      <div class="drag-handle" onmousedown="event.stopPropagation()">
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
+      </div>
+      <div class="task-check ${done?'done':''}" onclick="toggleTask(${task.id},${!done})"></div>
+      <span class="task-title flex-1 text-sm leading-snug" contenteditable="${done?'false':'true'}"
+        data-placeholder="Task name"
+        onblur="renameTask(${task.id},this.textContent.trim())"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+      >${esc(task.title)}</span>
+      ${timeStr}
+      ${showDate?`<span class="text-xs text-amber-500">${fmtDisplayDate(task.scheduled_date)}</span>`:''}
+      <button title="Notes" onclick="toggleNotes(${task.id})" class="notes-icon p-1 ${hasNotes?'has-notes':''}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </button>
+      <div class="task-actions flex items-center gap-0.5">
+        <button title="Add to Google Calendar" onclick="addToCalendar(${task.id})" class="text-gray-300 hover:text-blue-400 p-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="16" y1="14" x2="16" y2="14" stroke-width="3" stroke-linecap="round"/></svg>
+        </button>
+        <button title="Push to tomorrow" onclick="pushTomorrow(${task.id})" class="text-gray-300 hover:text-gray-600 p-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button title="Reschedule" onclick="openReschedule(${task.id},event)" class="text-gray-300 hover:text-gray-600 p-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+        <button title="Delete" onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-400 p-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="task-notes-wrap pl-7 ${hasNotes?'open':''}" id="notes-${task.id}">
+      <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
+        onblur="saveTaskNotes(${task.id},this.value)"
+        onkeydown="if(event.key==='Escape')this.blur()"
+      >${esc(task.notes||'')}</textarea>
+    </div>
+  </div>`
+}
+
+function taskRowSmall(task, dimmed=false) {
+  const done = task.completed
+  const hasNotes = task.notes && task.notes.trim()
+  return `
+  <div class="task-row flex flex-col py-1.5 px-3 rounded-lg hover:bg-white group ${done?'completed':''}" id="task-${task.id}"
+    draggable="true"
+    onclick="taskRowClick(event,${task.id})"
+    ondragstart="dragStart(event,${task.id})"
+    ondragover="dragOver(event,${task.id})"
+    ondragleave="dragLeave(event,${task.id})"
+    ondragend="dragEnd(${task.id})"
+    ondrop="dragDrop(event,${task.id})">
+    <div class="flex items-center gap-2.5">
+      <div class="drag-handle">
+        <svg width="8" height="12" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
+      </div>
+      <div class="task-check ${done?'done':''}" style="width:13px;height:13px;min-width:13px" onclick="toggleTask(${task.id},${!done})"></div>
+      <span class="task-title flex-1 text-sm ${dimmed?'text-gray-400':'text-gray-600'} leading-snug ${done?'line-through':''}"
+        contenteditable="${done?'false':'true'}"
+        onblur="renameTask(${task.id},this.textContent.trim())"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+      >${esc(task.title)}</span>
+      <button title="Notes" onclick="toggleNotes(${task.id})" class="notes-icon p-1 ${hasNotes?'has-notes':''}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </button>
+      <div class="task-actions flex items-center gap-0.5">
+        <button onclick="openReschedule(${task.id},event)" class="text-gray-300 hover:text-gray-500 p-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        </button>
+        <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-400 p-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="task-notes-wrap pl-6 ${hasNotes?'open':''}" id="notes-${task.id}">
+      <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
+        onblur="saveTaskNotes(${task.id},this.value)"
+        onkeydown="if(event.key==='Escape')this.blur()"
+      >${esc(task.notes||'')}</textarea>
+    </div>
+  </div>`
+}
+
+async function addTaskToday(type='main') {
+  const inputId = type==='main' ? 'today-input' : 'smaller-input'
+  const input = document.getElementById(inputId)
+  const title = input.value.trim(); if (!title) return
+  const timeEl = document.getElementById('today-time')
+  const time_estimate = type==='main' ? (timeEl?.value||'') : ''
+  input.value = ''
+  if (type==='main' && timeEl) timeEl.value = ''
+  await api('POST', '/api/tasks', {title, area: 'General', scheduled_date: state.viewDay, task_type: type, time_estimate})
+  renderToday()
+}
+
+async function addTaskTomorrow() {
+  const input = document.getElementById('tomorrow-input')
+  const title = input.value.trim(); if (!title) return
+  input.value = ''
+  const tomorrow = formatDate(addDays(new Date(state.viewDay), 1))
+  await api('POST', '/api/tasks', {title, area: 'General', scheduled_date: tomorrow, task_type: 'main'})
+  renderToday()
+}
+
+async function toggleTask(id, done) {
+  const t = taskBefore(id)
+  if (t) pushUndo({taskId: id, fields: {completed: t.completed, completed_at: t.completed_at}})
+  await api('PUT', `/api/tasks/${id}`, {completed: done})
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+}
+
+async function renameTask(id, title) {
+  if (!title) return
+  const t = taskBefore(id)
+  if (t && t.title !== title) pushUndo({taskId: id, fields: {title: t.title}})
+  await api('PUT', `/api/tasks/${id}`, {title})
+}
+
+function toggleNotes(id) {
+  const wrap = document.getElementById(`notes-${id}`)
+  if (!wrap) return
+  const isOpen = wrap.classList.toggle('open')
+  if (isOpen) { const ta = wrap.querySelector('textarea'); if (ta) { ta.focus(); ta.selectionStart = ta.value.length } }
+}
+
+async function saveTaskTime(id, time) {
+  await api('PUT', `/api/tasks/${id}`, {time_estimate: time})
+}
+
+async function saveTaskNotes(id, notes) {
+  const t = taskBefore(id)
+  if (t && (t.notes||'') !== notes) pushUndo({taskId: id, fields: {notes: t.notes||''}})
+  await api('PUT', `/api/tasks/${id}`, {notes})
+  const icon = document.querySelector(`#task-${id} .notes-icon`)
+  if (icon) icon.classList.toggle('has-notes', !!(notes && notes.trim()))
+}
+
+// ── MULTI-SELECT ─────────────────────────────────────────────────────────
+
+const _selected = new Set()
+
+function taskRowClick(e, id) {
+  if (e.target.closest('button,input,textarea,[contenteditable="true"],.task-check,.drag-handle')) return
+  if (e.shiftKey && _selected.size > 0) {
+    const allRows = Array.from(document.querySelectorAll('[id^="task-"]'))
+    const lastId = [..._selected].at(-1)
+    const a = allRows.findIndex(r => r.id === `task-${lastId}`)
+    const b = allRows.findIndex(r => r.id === `task-${id}`)
+    const [lo, hi] = [Math.min(a,b), Math.max(a,b)]
+    allRows.slice(lo, hi+1).forEach(r => {
+      const rid = parseInt(r.id.replace('task-',''))
+      _selected.add(rid); r.classList.add('task-selected')
+    })
+  } else if (e.metaKey || e.ctrlKey) {
+    _selected.has(id) ? (_selected.delete(id), document.getElementById(`task-${id}`)?.classList.remove('task-selected'))
+                      : (_selected.add(id), document.getElementById(`task-${id}`)?.classList.add('task-selected'))
+  } else {
+    clearSelection()
+    _selected.add(id); document.getElementById(`task-${id}`)?.classList.add('task-selected')
+  }
+}
+
+function clearSelection() {
+  _selected.forEach(id => document.getElementById(`task-${id}`)?.classList.remove('task-selected'))
+  _selected.clear()
+}
+
+// ── UNDO ──────────────────────────────────────────────────────────────────
+
+const _undoStack = []
+function pushUndo(changes) {
+  _undoStack.push(Array.isArray(changes) ? changes : [changes])
+  if (_undoStack.length > 40) _undoStack.shift()
+}
+async function cmdUndo() {
+  if (_pendingDelete) return undoDelete()
+  if (!_undoStack.length) return
+  const changes = _undoStack.pop()
+  await Promise.all(changes.map(c => api('PUT', `/api/tasks/${c.taskId}`, c.fields)))
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+  if (state.section==='calendar') renderCalendar()
+}
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault(); cmdUndo()
+  }
+})
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────
+
+let _dragId = null
+
+function dragStart(e, id) {
+  if (!_selected.has(id)) { clearSelection(); _selected.add(id); document.getElementById(`task-${id}`)?.classList.add('task-selected') }
+  _dragId = id
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', id)
+  setTimeout(() => _selected.forEach(sid => document.getElementById(`task-${sid}`)?.classList.add('dragging')), 0)
+}
+
+function dragOver(e, id) {
+  e.preventDefault()
+  if (_selected.has(id)) return
+  document.querySelectorAll('.drag-over-top').forEach(el => el.classList.remove('drag-over-top'))
+  document.getElementById(`task-${id}`)?.classList.add('drag-over-top')
+}
+
+function dragLeave(e, id) {
+  document.getElementById(`task-${id}`)?.classList.remove('drag-over-top')
+}
+
+function dragEnd(id) {
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('dragging','drag-over-top'))
+  _dragId = null
+}
+
+async function dragDrop(e, targetId) {
+  e.preventDefault()
+  e.stopPropagation()
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('drag-over-top','dragging'))
+  if (!_dragId || _selected.has(targetId)) return
+
+  const targetEl = document.getElementById(`task-${targetId}`)
+  if (!targetEl) return
+  const container = targetEl.parentElement
+
+  // Detect task_type from container id
+  let newType = null
+  if (container.id === 'master-smaller') newType = 'smaller'
+  else if (container.id === 'master-main') newType = 'main'
+  else if (container.id === 'master-bank') newType = 'bank'
+  else if (container.id === 'today-smaller') newType = 'smaller'
+  else if (container.id === 'today-main') newType = 'main'
+
+  // Move all selected rows before target in DOM
+  const ids = [..._selected]
+  ids.forEach(sid => {
+    const el = document.getElementById(`task-${sid}`)
+    if (el && el !== targetEl) container.insertBefore(el, targetEl)
+  })
+
+  // Save: sort_order for all siblings, plus task_type if changed
+  if (newType) {
+    const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0}} : null }).filter(Boolean)
+    if (before.length) pushUndo(before)
+  }
+  const siblings = Array.from(container.querySelectorAll('[id^="task-"]'))
+  const updates = siblings.map((el, i) => {
+    const sid = parseInt(el.id.replace('task-',''))
+    const body = {sort_order: i}
+    if (newType && ids.includes(sid)) body.task_type = newType
+    return api('PUT', `/api/tasks/${sid}`, body)
+  })
+  await Promise.all(updates)
+  clearSelection()
+  _dragId = null
+  if (state.section === 'week') renderWeek()
+}
+
+async function dropOnSection(e, containerId) {
+  e.preventDefault()
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('drag-over-top','dragging'))
+  if (!_dragId) return
+  const container = document.getElementById(containerId)
+  if (!container) return
+  const newType = containerId==='master-smaller' ? 'smaller' : containerId==='master-bank' ? 'bank' : 'main'
+  const ids = [..._selected]
+  const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0}} : null }).filter(Boolean)
+  if (before.length) pushUndo(before)
+  ids.forEach(sid => { const el = document.getElementById(`task-${sid}`); if (el) container.appendChild(el) })
+  const siblings = Array.from(container.querySelectorAll('[id^="task-"]'))
+  await Promise.all(siblings.map((el, i) => {
+    const sid = parseInt(el.id.replace('task-',''))
+    const body = {sort_order: i}
+    if (ids.includes(sid)) body.task_type = newType
+    return api('PUT', `/api/tasks/${sid}`, body)
+  }))
+  clearSelection(); _dragId = null
+  if (state.section==='week') renderWeek()
+}
+
+let _deleteTimer = null
+let _pendingDelete = null
+
+function filterPending(tasks) {
+  return _pendingDelete ? tasks.filter(t => t.id !== _pendingDelete) : tasks
+}
+
+async function deleteTask(id) {
+  if (_pendingDelete) await _flushDelete()
+  _pendingDelete = id
+  document.getElementById(`task-${id}`)?.remove()
+  const toast = document.getElementById('undo-toast')
+  toast.classList.remove('hidden')
+  clearTimeout(_deleteTimer)
+  _deleteTimer = setTimeout(_flushDelete, 5000)
+}
+
+async function _flushDelete() {
+  clearTimeout(_deleteTimer)
+  if (!_pendingDelete) return
+  const id = _pendingDelete; _pendingDelete = null
+  document.getElementById('undo-toast').classList.add('hidden')
+  await api('DELETE', `/api/tasks/${id}`)
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+  if (state.section==='calendar') renderCalendar()
+}
+
+async function undoDelete() {
+  clearTimeout(_deleteTimer)
+  _pendingDelete = null
+  document.getElementById('undo-toast').classList.add('hidden')
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+  if (state.section==='calendar') renderCalendar()
+}
+
+async function addToCalendar(id) {
+  const task = state._tasksCache.find(t => t.id === id)
+  if (!task) return
+  const date = task.scheduled_date || state.viewDay
+  if (state._calConnected) {
+    const btn = document.querySelector(`#task-${id} [title="Add to Google Calendar"]`)
+    if (btn) btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span>'
+    const result = await api('POST', '/api/calendar/create-event', {
+      title: task.title, date, notes: task.notes||'', time_estimate: task.time_estimate||''
+    })
+    if (result.ok) {
+      if (btn) btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+      if (result.event_link) setTimeout(() => window.open(result.event_link, '_blank'), 300)
+    } else {
+      if (btn) btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+      alert(result.error || 'Calendar error')
+    }
+  } else {
+    // Fallback: open Google Calendar create URL
+    const d = date.replace(/-/g,'')
+    const nd = formatDate(addDays(new Date(date+'T12:00:00'), 1)).replace(/-/g,'')
+    window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${d}/${nd}&details=${encodeURIComponent(task.notes||'')}`, '_blank')
+  }
+}
+
+// ── CALENDAR SETUP ────────────────────────────────────────────────────────
+
+async function checkCalStatus() {
+  const r = await api('GET', '/api/calendar/status')
+  state._calConnected = r.connected
+  const el = document.getElementById('cal-status')
+  if (r.connected) {
+    el.textContent = 'Calendar ✓'
+    el.className = 'px-2 text-xs text-green-500 cursor-pointer mt-1'
+  } else {
+    el.textContent = 'Connect Calendar'
+    el.className = 'px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1'
+  }
+  // Handle redirect back after OAuth
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('cal_connected')) {
+    state._calConnected = true
+    el.textContent = 'Calendar ✓'
+    el.className = 'px-2 text-xs text-green-500 cursor-pointer mt-1'
+    history.replaceState({}, '', '/')
+  }
+}
+
+function showCalModal() {
+  const connected = state._calConnected
+  document.getElementById('cal-connected-view').classList.toggle('hidden', !connected)
+  document.getElementById('cal-setup-view').classList.toggle('hidden', connected)
+  document.getElementById('cal-modal').classList.remove('hidden')
+}
+
+function closeCalModal(evt) {
+  if (!evt || evt.target === document.getElementById('cal-modal'))
+    document.getElementById('cal-modal').classList.add('hidden')
+}
+
+async function saveCalCreds() {
+  const client_id = document.getElementById('cal-client-id').value.trim()
+  const client_secret = document.getElementById('cal-client-secret').value.trim()
+  if (!client_id || !client_secret) return
+  const r = await api('POST', '/api/set-gcal-credentials', {client_id, client_secret})
+  if (r.ok) window.location.href = '/auth/google'
+}
+
+async function disconnectCal() {
+  await fetch('/api/calendar/disconnect', {method:'POST'})
+  state._calConnected = false
+  document.getElementById('cal-status').textContent = 'Connect Calendar'
+  document.getElementById('cal-status').className = 'px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1'
+  closeCalModal()
+}
+
+async function pushTomorrow(id) {
+  const tomorrow = formatDate(addDays(new Date(state.today), 1))
+  await api('PUT', `/api/tasks/${id}`, {scheduled_date: tomorrow})
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+}
+
+// ── REMINDERS ─────────────────────────────────────────────────────────────
+
+async function loadReminders() {
+  state.reminders = await api('GET', '/api/reminders')
+  renderReminders()
+}
+
+function renderReminders() {
+  const el = document.getElementById('reminders-list')
+  el.innerHTML = state.reminders.map(r => `
+    <div class="group flex items-start gap-2 text-xs text-gray-600">
+      <span class="flex-1 leading-snug">${esc(r.content)}</span>
+      <button onclick="deleteReminder(${r.id})" class="text-amber-200 hover:text-red-400 opacity-0 group-hover:opacity-100 mt-0.5">×</button>
+    </div>`
+  ).join('')
+}
+
+async function addReminder() {
+  const input = document.getElementById('reminder-input')
+  const content = input.value.trim(); if (!content) return
+  input.value = ''
+  const r = await api('POST', '/api/reminders', {content})
+  state.reminders.push(r)
+  renderReminders()
+}
+
+async function deleteReminder(id) {
+  await api('DELETE', `/api/reminders/${id}`)
+  state.reminders = state.reminders.filter(r=>r.id!==id)
+  renderReminders()
+}
+
+// ── DAY PICKER (inline, pops next to click) ──────────────────────────────
+
+let _dayPickerTaskId = null
+
+function openReschedule(taskId, evt) {
+  evt.stopPropagation()
+  _dayPickerTaskId = taskId
+  const picker = document.getElementById('inline-day-picker')
+  picker.classList.remove('hidden')
+
+  // Use noon to avoid UTC-midnight timezone issues
+  const todayNoon = new Date(state.today + 'T12:00:00')
+  const dow = todayNoon.getDay() // 0=Sun, correct local day
+  const sunNoon = new Date(todayNoon)
+  sunNoon.setDate(todayNoon.getDate() - dow) // rewind to this week's Sunday
+
+  function noonDate(base, offset) {
+    const d = new Date(base); d.setDate(base.getDate() + offset)
+    // format as YYYY-MM-DD using local date parts
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+
+  const dayEntries = [
+    {label:'Sun', date: noonDate(sunNoon, 0)},
+    {label:'Mon', date: noonDate(sunNoon, 1)},
+    {label:'Tue', date: noonDate(sunNoon, 2)},
+    {label:'Wed', date: noonDate(sunNoon, 3)},
+    {label:'Thu', date: noonDate(sunNoon, 4)},
+    {label:'Fri', date: noonDate(sunNoon, 5)},
+    {label:'Sun ›', date: noonDate(sunNoon, 7)},
+  ]
+
+  picker.innerHTML = dayEntries.map(o => `
+    <button onclick="pickDay('${o.date}')" style="color:${o.date===state.today?'#D97706':'#374151'}">${esc(o.label)}</button>
+  `).join('') +
+  `<button onclick="pickDay('')" style="color:#EF4444;border-top:1px solid #F3F4F6;margin-top:4px;padding-top:8px">Clear date</button>` +
+  `<button onclick="moveToBank()" style="color:#9CA3AF">Bank</button>`
+
+  // Position right next to where they clicked
+  const rect = evt.target.getBoundingClientRect()
+  const pickerW = 120, pickerH = 6 * 34 + 16
+  let top = rect.bottom + 4
+  let left = rect.left
+  if (top + pickerH > window.innerHeight) top = rect.top - pickerH - 4
+  if (left + pickerW > window.innerWidth) left = window.innerWidth - pickerW - 8
+  picker.style.top = `${top}px`
+  picker.style.left = `${left}px`
+
+  setTimeout(() => document.addEventListener('click', closeInlineDayPicker, {once: true}), 0)
+}
+
+async function pickDay(date) {
+  closeInlineDayPicker()
+  if (_dayPickerTaskId === null) return
+  const ids = (_selected.size > 0 && _selected.has(_dayPickerTaskId)) ? [..._selected] : [_dayPickerTaskId]
+  const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {scheduled_date: t.scheduled_date||''}} : null }).filter(Boolean)
+  if (before.length) pushUndo(before)
+  await Promise.all(ids.map(id => api('PUT', `/api/tasks/${id}`, {scheduled_date: date})))
+  _dayPickerTaskId = null
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+}
+
+async function moveToBank() {
+  closeInlineDayPicker()
+  if (_dayPickerTaskId === null) return
+  const ids = (_selected.size > 0 && _selected.has(_dayPickerTaskId)) ? [..._selected] : [_dayPickerTaskId]
+  const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', scheduled_date: t.scheduled_date||''}} : null }).filter(Boolean)
+  if (before.length) pushUndo(before)
+  await Promise.all(ids.map(id => api('PUT', `/api/tasks/${id}`, {task_type: 'bank', scheduled_date: ''})))
+  _dayPickerTaskId = null
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+}
+
+function closeInlineDayPicker() {
+  document.getElementById('inline-day-picker')?.classList.add('hidden')
+}
+
+async function rescheduleToDate(date) { await pickDay(date) }
+
+// ── WEEK ──────────────────────────────────────────────────────────────────
+
+function prevWeek() { state.weekStart = addDays(state.weekStart,-7); renderWeek() }
+function nextWeek() { state.weekStart = addDays(state.weekStart,7); renderWeek() }
+function goToThisWeek() { state.weekStart = getMonday(new Date()); renderWeek() }
+
+const debounceWeekGoal = debounce(async () => {
+  const ws = formatDate(state.weekStart)
+  const goal = document.getElementById('week-goal').value
+  await api('PUT', `/api/week-goals/${ws}`, {goal})
+}, 600)
+
+async function renderWeek() {
+  const tasks = filterPending(await api('GET', '/api/tasks'))
+  state._tasksCache = tasks
+  const done = tasks.filter(t => t.completed && t.task_type !== 'top3')
+  const bank = tasks.filter(t => t.task_type === 'bank')
+  const sortActiveLast = arr => [...arr.filter(t=>!t.completed), ...arr.filter(t=>t.completed)]
+
+  // Top 3
+  const top3Tasks = tasks.filter(t => t.task_type === 'top3')
+  const top3El = document.getElementById('top3-list')
+  if (top3El) {
+    let t3html = ''
+    for (let i = 0; i < 3; i++) {
+      const t = top3Tasks[i]
+      if (t) {
+        const t3badge = t.scheduled_date
+          ? `<span class="day-badge ${t.scheduled_date===state.today?'is-today':'assigned'}" onclick="openReschedule(${t.id},event)">${new Date(t.scheduled_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>`
+          : `<span class="day-badge unassigned" onclick="openReschedule(${t.id},event)">+ day</span>`
+        t3html += `<div class="top3-slot has-task group" id="task-${t.id}">
+          <span class="top3-num">${i+1}</span>
+          <div class="task-check ${t.completed?'done':''}" onclick="toggleTask(${t.id},${!t.completed})"></div>
+          <span class="flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}"
+            contenteditable="${t.completed?'false':'true'}"
+            onblur="renameTask(${t.id},this.textContent.trim())"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+          >${esc(t.title)}</span>
+          ${t3badge}
+          <button onclick="deleteTask(${t.id})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 p-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>`
+      } else {
+        t3html += `<div class="top3-slot">
+          <span class="top3-num">${i+1}</span>
+          <input class="flex-1 text-sm text-gray-400 bg-transparent border-none outline-none placeholder:text-gray-300"
+            placeholder="Add priority ${i+1}…"
+            onkeydown="if(event.key==='Enter') addTop3(this)">
+        </div>`
+      }
+    }
+    top3El.innerHTML = t3html
+  }
+
+  // Build day options for badge picker
+  const today = new Date(state.today)
+  const mon = getMonday(today)
+  const weekDays = Array.from({length:7},(_,i) => {
+    const d = addDays(mon, i)
+    const ds = formatDate(d)
+    const dow = d.getDay()
+    const label = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
+    return {date: ds, label, isToday: ds===state.today}
+  })
+
+  function dayBadge(task) {
+    const sd = task.scheduled_date
+    if (!sd) return `<span class="day-badge unassigned" onclick="openReschedule(${task.id},event)">+ day</span>`
+    const d = new Date(sd+'T12:00:00')
+    const label = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
+    const isToday_ = sd === state.today
+    return `<span class="day-badge ${isToday_?'is-today':'assigned'}" onclick="openReschedule(${task.id},event)" title="Change day">${label}</span>`
+  }
+
+  function masterRow(task) {
+    const done = task.completed
+    const hasNotes = task.notes && task.notes.trim()
+    return `
+    <div class="task-row flex flex-col py-2 px-3 rounded-lg hover:bg-white group ${done?'completed':''}" id="task-${task.id}"
+      draggable="false"
+      onclick="taskRowClick(event,${task.id})"
+      ondragstart="dragStart(event,${task.id})" ondragover="dragOver(event,${task.id})"
+      ondragleave="dragLeave(event,${task.id})" ondragend="dragEnd(${task.id})" ondrop="dragDrop(event,${task.id})">
+      <div class="flex items-center gap-2.5">
+        <div class="drag-handle" onmousedown="document.getElementById('task-${task.id}').draggable=true" onmouseup="document.getElementById('task-${task.id}').draggable=false">
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
+        </div>
+        <div class="task-check ${done?'done':''}" onclick="toggleTask(${task.id},${!done})"></div>
+        <span class="task-title flex-1 text-sm leading-snug ${done?'line-through text-gray-400':''}"
+          contenteditable="${done?'false':'true'}"
+          onblur="renameTask(${task.id},this.textContent.trim())"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+        >${esc(task.title)}</span>
+        <button title="Notes" onclick="toggleNotes(${task.id})" class="notes-icon ${hasNotes?'has-notes':''}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </button>
+        ${dayBadge(task)}
+        <div class="task-actions flex items-center gap-0.5">
+          <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-400 p-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="task-notes-wrap pl-9" id="notes-${task.id}">
+        <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
+          onblur="saveTaskNotes(${task.id},this.value)"
+          onkeydown="if(event.key==='Escape')this.blur()"
+        >${esc(task.notes||'')}</textarea>
+      </div>
+    </div>`
+  }
+
+  const main = sortActiveLast(tasks.filter(t=>(t.task_type||'main')==='main' && t.task_type!=='top3' && t.task_type!=='bank'))
+  const smaller = sortActiveLast(tasks.filter(t=>t.task_type==='smaller'))
+  state._backlogTitles = tasks.filter(t=>!t.completed&&(!t.scheduled_date||t.scheduled_date==='')&&t.task_type!=='top3'&&t.task_type!=='bank').map(t=>t.title)
+
+  document.getElementById('master-main').innerHTML = main.map(masterRow).join('')
+  document.getElementById('master-smaller').innerHTML = smaller.map(masterRow).join('')
+
+  const completedWrap = document.getElementById('master-completed-wrap')
+  const completedEl = document.getElementById('master-completed')
+  const archiveLabel = document.getElementById('archive-label')
+  if (done.length) {
+    completedWrap.classList.remove('hidden')
+    archiveLabel.textContent = `Completed (${done.length})`
+    completedEl.innerHTML = done.map(masterRow).join('')
+  } else {
+    completedWrap.classList.add('hidden')
+  }
+
+  const bankEl = document.getElementById('master-bank')
+  if (bankEl) bankEl.innerHTML = bank.map(masterRow).join('')
+}
+
+function toggleMasterArchive() {
+  const el = document.getElementById('master-completed')
+  const chevron = document.getElementById('archive-chevron')
+  const isNowHidden = el.classList.toggle('hidden')
+  chevron.style.transform = isNowHidden ? '' : 'rotate(90deg)'
+}
+
+function toggleWeekSnap() {
+  const snap = document.getElementById('week-snap')
+  const btn = document.getElementById('week-snap-btn')
+  const isOpen = snap.classList.toggle('hidden')
+  btn.classList.toggle('bg-gray-900', !isOpen)
+  btn.classList.toggle('text-white', !isOpen)
+  btn.classList.toggle('text-gray-400', isOpen)
+  if (!isOpen) renderWeekSnap()
+}
+
+async function renderWeekSnap() {
+  const mon = getMonday(new Date(state.viewDay))
+  const days = Array.from({length:7},(_,i)=>formatDate(addDays(mon,i)))
+  const tasks = await api('GET', `/api/tasks?week_start=${formatDate(mon)}`)
+  const grid = document.getElementById('week-snap-grid')
+  grid.innerHTML = days.map(day => {
+    const dayTasks = tasks.filter(t=>t.scheduled_date===day&&!t.completed)
+    const isViewing = day===state.viewDay
+    const isToday_ = day===state.today
+    const dow = new Date(day+'T12:00:00').getDay()
+    const dayName = new Date(day+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'})
+    const dayNum = new Date(day+'T12:00:00').getDate()
+    return `<div class="p-2 cursor-pointer hover:bg-gray-50 ${isViewing?'bg-amber-50':''}" onclick="navToDay('${day}')">
+      <div class="text-center mb-1">
+        <div class="text-xs ${isToday_?'text-amber-500 font-semibold':isViewing?'text-gray-700 font-semibold':'text-gray-400'}">${dayName}</div>
+        <div class="text-xs ${isToday_?'text-amber-500':isViewing?'text-gray-700':'text-gray-400'}">${dayNum}</div>
+      </div>
+      <div class="space-y-0.5">${dayTasks.slice(0,4).map(t=>`
+        <div class="text-xs text-gray-500 truncate leading-tight">${esc(t.title)}</div>`).join('')}
+        ${dayTasks.length>4?`<div class="text-xs text-gray-300">+${dayTasks.length-4} more</div>`:''}
+      </div>
+    </div>`
+  }).join('')
+}
+
+function navToDay(date) {
+  state.viewDay = date
+  document.getElementById('today-btn')?.classList.toggle('hidden', date===state.today)
+  document.getElementById('week-snap')?.classList.remove('hidden')
+  document.getElementById('week-snap-btn')?.classList.add('bg-gray-900','text-white')
+  document.getElementById('week-snap-btn')?.classList.remove('text-gray-400')
+  renderWeekSnap()
+  renderToday()
+}
+
+async function addTop3(input) {
+  const title = input.value.trim(); if (!title) return
+  input.value = ''
+  await api('POST', '/api/tasks', {title, area:'General', task_type:'top3'})
+  renderWeek()
+}
+
+async function addMasterTask(type='main') {
+  const inputId = type==='main' ? 'master-input' : type==='smaller' ? 'master-smaller-input' : 'master-bank-input'
+  const input = document.getElementById(inputId)
+  const title = input.value.trim(); if (!title) return
+  input.value = ''
+  await api('POST', '/api/tasks', {title, area:'General', task_type: type, time_estimate: ''})
+  renderWeek()
+}
+
+function copyBacklog() {
+  const titles = state._backlogTitles || []
+  if (!titles.length) return
+  navigator.clipboard.writeText(titles.map(t => `• ${t}`).join('\n'))
+  const btn = document.getElementById('copy-backlog-btn')
+  if (btn) {
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+    setTimeout(() => renderWeek(), 1500)
+  }
+}
+
+async function addWeekTask(input, date, type='main') {
+  const title = input.value.trim(); if (!title) return
+  input.value = ''
+  await api('POST', '/api/tasks', {title, area:'General', scheduled_date: date, task_type: type})
+  renderWeek()
+}
+
+let _weekDragId = null
+
+function weekDragStart(e, id) {
+  _weekDragId = id
+  e.dataTransfer.effectAllowed = 'move'
+  e.stopPropagation()
+  setTimeout(() => document.getElementById(`task-${id}`)?.classList.add('dragging'), 0)
+}
+
+function weekDragEnd() {
+  document.querySelectorAll('.task-row').forEach(el => { el.classList.remove('dragging'); el.draggable = false })
+  document.querySelectorAll('.week-drop-zone').forEach(el => el.classList.remove('drop-active'))
+  _weekDragId = null
+}
+
+function weekDragOver(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  e.currentTarget.classList.add('drop-active')
+}
+
+function weekDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget))
+    e.currentTarget.classList.remove('drop-active')
+}
+
+async function weekDrop(e, date, type) {
+  e.preventDefault()
+  e.stopPropagation()
+  document.querySelectorAll('.week-drop-zone').forEach(el => el.classList.remove('drop-active'))
+  if (!_weekDragId) return
+  const id = _weekDragId; _weekDragId = null
+  await api('PUT', `/api/tasks/${id}`, {scheduled_date: date, task_type: type})
+  renderWeek()
+}
+
+// ── IDEAS ─────────────────────────────────────────────────────────────────
+
+async function renderIdeas() {
+  const ideas = await api('GET', '/api/ideas')
+  document.getElementById('ideas-count').textContent = ideas.length||''
+  const el = document.getElementById('ideas-list')
+  const empty = document.getElementById('ideas-empty')
+  if (!ideas.length) { el.innerHTML=''; empty.classList.remove('hidden'); return }
+  empty.classList.add('hidden')
+  el.innerHTML = ideas.map(i=>`
+    <div class="group flex items-start gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 hover:border-gray-200">
+      <div class="flex-1 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${esc(i.content)}</div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-xs text-gray-300">${new Date(i.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+        <button onclick="deleteIdea(${i.id})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>`).join('')
+}
+
+async function addIdea() {
+  const input = document.getElementById('idea-input')
+  const content = input.value.trim(); if (!content) return
+  input.value = ''
+  await api('POST', '/api/ideas', {content})
+  renderIdeas()
+}
+
+async function deleteIdea(id) { await api('DELETE',`/api/ideas/${id}`); renderIdeas() }
+
+// ── ARTICLES ──────────────────────────────────────────────────────────────
+
+function setArticleTab(tab) {
+  state.articleTab = tab
+  document.getElementById('article-url-input').classList.toggle('hidden', tab!=='url')
+  document.getElementById('article-text-input').classList.toggle('hidden', tab!=='text')
+  document.getElementById('tab-url').className = tab==='url' ? 'px-3 py-1 rounded-md bg-gray-900 text-white text-xs' : 'px-3 py-1 rounded-md bg-gray-100 text-gray-600 text-xs hover:bg-gray-200'
+  document.getElementById('tab-text').className = tab==='text' ? 'px-3 py-1 rounded-md bg-gray-900 text-white text-xs' : 'px-3 py-1 rounded-md bg-gray-100 text-gray-600 text-xs hover:bg-gray-200'
+}
+
+async function renderArticles() {
+  const articles = await api('GET', '/api/articles')
+  document.getElementById('articles-list').innerHTML = articles.map(a=>`
+    <div class="group bg-white border border-gray-100 rounded-xl px-5 py-4 hover:border-gray-200">
+      <div class="flex items-start justify-between mb-2">
+        ${a.url?`<a href="${esc(a.url)}" target="_blank" class="text-xs text-blue-500 hover:underline truncate max-w-sm">${esc(a.url)}</a>`:'<span></span>'}
+        <div class="flex items-center gap-2 shrink-0 ml-2">
+          <span class="text-xs text-gray-300">${new Date(a.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+          <button onclick="deleteArticle(${a.id})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">${esc(a.summary)}</div>
+    </div>`).join('')
+}
+
+async function summarizeArticle() {
+  const btn = document.getElementById('summarize-btn')
+  btn.innerHTML = `<span class="spinner"></span> Summarizing...`; btn.disabled=true
+  const url = state.articleTab==='url' ? document.getElementById('article-url').value.trim() : ''
+  const text = state.articleTab==='text' ? document.getElementById('article-text').value.trim() : ''
+  const result = await api('POST', '/api/articles/summarize', {url, text})
+  btn.innerHTML = 'Summarize'; btn.disabled=false
+  if (result.error) { alert(result.error); return }
+  state.lastSummary = result.summary
+  document.getElementById('article-summary').textContent = result.summary
+  document.getElementById('article-result').classList.remove('hidden')
+  if (state.articleTab==='url') document.getElementById('article-url').value=''
+  if (state.articleTab==='text') document.getElementById('article-text').value=''
+  renderArticles()
+}
+
+async function saveArticleSummaryToIdea() {
+  if (!state.lastSummary) return
+  await api('POST', '/api/ideas', {content: state.lastSummary})
+  document.getElementById('article-result').classList.add('hidden')
+  showSection('ideas')
+}
+
+async function deleteArticle(id) { await api('DELETE',`/api/articles/${id}`); renderArticles() }
+
+// ── MEETINGS ──────────────────────────────────────────────────────────────
+
+async function renderMeetings() {
+  const meetings = await api('GET', '/api/meetings')
+  state.meetings = meetings
+  document.getElementById('meeting-list').innerHTML = meetings.map(m=>`
+    <div onclick="selectMeeting(${m.id})"
+      class="px-3 py-2.5 rounded-lg cursor-pointer text-sm ${m.id===state.selectedMeetingId?'bg-gray-100 font-medium':'hover:bg-gray-50'}">
+      <div class="text-gray-800 truncate">${esc(m.title)}</div>
+      ${m.meeting_date?`<div class="text-xs text-gray-400 mt-0.5">${fmtDisplayDate(m.meeting_date)}</div>`:''}
+    </div>`).join('')
+  if (state.selectedMeetingId) {
+    const m = meetings.find(m=>m.id===state.selectedMeetingId)
+    if (m) renderMeetingDetail(m)
+  }
+}
+
+function renderMeetingDetail(m) {
+  document.getElementById('meeting-placeholder').classList.add('hidden')
+  document.getElementById('meeting-detail').classList.remove('hidden')
+  document.getElementById('m-title').value = m.title||''
+  document.getElementById('m-date').value = m.meeting_date||''
+  const attendees = typeof m.attendees==='string' ? JSON.parse(m.attendees||'[]') : (m.attendees||[])
+  document.getElementById('m-attendees').value = attendees.join(', ')
+  document.getElementById('m-notes').value = m.notes||''
+  const actions = typeof m.action_items==='string' ? JSON.parse(m.action_items||'[]') : (m.action_items||[])
+  renderActionItems(actions)
+  const draft = m.email_draft||''
+  document.getElementById('m-email').value = draft
+  document.getElementById('m-email-container').classList.toggle('hidden', !draft)
+}
+
+function renderActionItems(actions) {
+  const el = document.getElementById('m-actions')
+  if (!actions.length) { el.innerHTML='<div class="text-sm text-gray-400">None yet.</div>'; return }
+  el.innerHTML = actions.map(a=>`
+    <div class="flex items-start gap-2 text-sm">
+      <div class="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1.5 shrink-0"></div>
+      <span class="text-gray-700">${esc(a)}</span>
+    </div>`).join('')
+}
+
+async function newMeeting() {
+  const m = await api('POST', '/api/meetings', {title:'New meeting', meeting_date: state.today})
+  state.selectedMeetingId = m.id
+  renderMeetings()
+  setTimeout(()=>{ const t=document.getElementById('m-title'); t.focus(); t.select() }, 100)
+}
+
+async function selectMeeting(id) { state.selectedMeetingId = id; renderMeetings() }
+
+const debounceSaveMeeting = debounce(async () => {
+  if (!state.selectedMeetingId) return
+  const attendeesRaw = document.getElementById('m-attendees').value
+  await api('PUT', `/api/meetings/${state.selectedMeetingId}`, {
+    title: document.getElementById('m-title').value,
+    meeting_date: document.getElementById('m-date').value,
+    attendees: attendeesRaw.split(',').map(s=>s.trim()).filter(Boolean),
+    notes: document.getElementById('m-notes').value,
+    email_draft: document.getElementById('m-email').value,
+  })
+  renderMeetings()
+}, 800)
+
+async function extractActions() {
+  const btn = document.getElementById('extract-btn')
+  btn.innerHTML=`<span class="spinner"></span> Extracting...`; btn.disabled=true
+  const attendees = document.getElementById('m-attendees').value.split(',').map(s=>s.trim()).filter(Boolean)
+  await api('PUT',`/api/meetings/${state.selectedMeetingId}`,{notes:document.getElementById('m-notes').value,attendees})
+  const result = await api('POST',`/api/meetings/${state.selectedMeetingId}/extract-actions`)
+  btn.innerHTML='Extract from notes'; btn.disabled=false
+  if (result.error) { alert(result.error); return }
+  renderActionItems(result.action_items)
+}
+
+async function generateEmail() {
+  const btn = document.getElementById('email-btn')
+  btn.innerHTML=`<span class="spinner"></span> Drafting...`; btn.disabled=true
+  const attendees = document.getElementById('m-attendees').value.split(',').map(s=>s.trim()).filter(Boolean)
+  await api('PUT',`/api/meetings/${state.selectedMeetingId}`,{
+    title:document.getElementById('m-title').value,
+    meeting_date:document.getElementById('m-date').value,
+    attendees, notes:document.getElementById('m-notes').value
+  })
+  const result = await api('POST',`/api/meetings/${state.selectedMeetingId}/generate-email`)
+  btn.innerHTML='Draft email'; btn.disabled=false
+  if (result.error) { alert(result.error); return }
+  document.getElementById('m-email').value = result.email_draft
+  document.getElementById('m-email-container').classList.remove('hidden')
+}
+
+async function deleteMeeting() {
+  if (!state.selectedMeetingId||!confirm('Delete this meeting?')) return
+  await api('DELETE',`/api/meetings/${state.selectedMeetingId}`)
+  state.selectedMeetingId=null
+  document.getElementById('meeting-detail').classList.add('hidden')
+  document.getElementById('meeting-placeholder').classList.remove('hidden')
+  renderMeetings()
+}
+
+function copyEmail() {
+  navigator.clipboard.writeText(document.getElementById('m-email').value).then(()=>{
+    const btn=event.target.closest('button'); const orig=btn.textContent
+    btn.textContent='Copied!'; setTimeout(()=>btn.textContent=orig,1500)
+  })
+}
+
+function openEmailDraft() {
+  const text = document.getElementById('m-email').value
+  const to = document.getElementById('m-attendees').value.split(',').map(s=>s.trim()).filter(Boolean).join(',')
+  const subj = document.getElementById('m-title').value
+  window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('Re: '+subj)}&body=${encodeURIComponent(text)}`
+}
+
+// ── CALENDAR VIEW ─────────────────────────────────────────────────────────
+
+const CAL_START_HOUR = 7
+const CAL_END_HOUR = 21
+const CAL_PX_PER_HOUR = 44
+
+function getSunday(d) {
+  const date = new Date(d)
+  date.setDate(date.getDate() - date.getDay())
+  date.setHours(0,0,0,0)
+  return date
+}
+function timeToMin(t) {
+  if (!t) return 9 * 60
+  const [h, m] = t.split(':').map(Number)
+  return (h||0) * 60 + (m||0)
+}
+function minToTime(m) {
+  const h = Math.floor(m/60), mn = m%60
+  return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`
+}
+function minToPx(m) { return (m - CAL_START_HOUR*60) * CAL_PX_PER_HOUR / 60 }
+function pxToMin(px) { return px / CAL_PX_PER_HOUR * 60 + CAL_START_HOUR*60 }
+function fmtHour(h) {
+  if (h===12) return '12pm'; if (h===0) return '12am'
+  return h>12 ? `${h-12}pm` : `${h}am`
+}
+function fmtBlockTime(t, dur) {
+  if (!t) return ''
+  const [h, m] = t.split(':').map(Number)
+  const ampm = h>=12?'pm':'am', h12 = h%12||12
+  const s = m ? `${h12}:${String(m).padStart(2,'0')}${ampm}` : `${h12}${ampm}`
+  if (!dur) return s
+  const em = h*60+m+dur, eh = Math.floor(em/60)%24, emm = em%60
+  const eampm = eh>=12?'pm':'am', eh12 = eh%12||12
+  const e_ = emm ? `${eh12}:${String(emm).padStart(2,'0')}${eampm}` : `${eh12}${eampm}`
+  return `${s} – ${e_}`
+}
+
+let _calWeekStart = getSunday(new Date())
+let _calMoving = null
+let _calResizing = null
+
+async function renderCalendar() {
+  const days = Array.from({length:7},(_,i)=>formatDate(addDays(_calWeekStart,i)))
+  const s = new Date(days[0]+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})
+  const e = new Date(days[6]+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})
+  document.getElementById('cal-week-label').textContent = `${s} – ${e}`
+  document.getElementById('cal-today-btn')?.classList.toggle('hidden', days.includes(state.today))
+
+  const [tasks, gcalResp] = await Promise.all([
+    api('GET','/api/tasks'),
+    api('GET',`/api/calendar/gcal-events?week_start=${days[0]}`)
+  ])
+  const allTasks = filterPending(tasks)
+  state._tasksCache = allTasks
+  const gcalEvents = (gcalResp && gcalResp.events) || []
+  window._calGcalCache = gcalEvents
+
+  // Unscheduled panel — tasks with no start_time (need time-blocking)
+  const unsch = allTasks.filter(t => !t.start_time && t.task_type !== 'bank' && !t.completed)
+  // Group: today first, then by date, then undated
+  const dayOrder = d => d || 'zzz'
+  unsch.sort((a,b) => {
+    const da = dayOrder(a.scheduled_date), db = dayOrder(b.scheduled_date)
+    if (da===db) return 0; return da<db?-1:1
+  })
+  let lastDay = null
+  const unschHtml = unsch.map(t => {
+    let header = ''
+    const sd = t.scheduled_date
+    if (sd !== lastDay) {
+      lastDay = sd
+      const label = !sd ? 'No date' : sd===state.today ? 'Today' : new Date(sd+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
+      header = `<div class="text-xs font-semibold text-gray-400 px-2 pt-3 pb-1 uppercase tracking-wide">${label}</div>`
+    }
+    return header + `<div class="cal-unsch-card" id="cal-unsch-${t.id}"
+      draggable="true"
+      ondragstart="calUnschDragStart(event,${t.id})"
+      ondragend="calUnschDragEnd(${t.id})">${esc(t.title)}</div>`
+  }).join('')
+  document.getElementById('cal-unsch-list').innerHTML = unschHtml ||
+    '<div class="text-xs text-gray-400 px-2 py-3">All time-blocked!</div>'
+
+  // Day headers
+  const hdrs = document.getElementById('cal-day-headers')
+  hdrs.innerHTML = '<div class="cal-gutter"></div>' + days.map(day=>{
+    const d=new Date(day+'T12:00:00'), isToday=day===state.today
+    const dayName = d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase()
+    const num = isToday
+      ? `<div class="cal-hdr-today-num"><span style="color:white;font-size:16px;font-weight:500">${d.getDate()}</span></div>`
+      : `<div style="font-size:22px;font-weight:400;color:#3c4043;line-height:1;margin-top:2px">${d.getDate()}</div>`
+    return `<div class="cal-day-header-cell" style="padding:6px 2px 8px">
+      <div style="font-size:10px;font-weight:500;color:${isToday?'#1a73e8':'#70757a'};letter-spacing:0.5px">${dayName}</div>
+      ${num}
+    </div>`
+  }).join('')
+
+  // Hour labels
+  document.getElementById('cal-hour-col').innerHTML =
+    Array.from({length:CAL_END_HOUR-CAL_START_HOUR},(_,i)=>
+      `<div class="cal-hour-label">${fmtHour(CAL_START_HOUR+i)}</div>`).join('')
+
+  // Day columns
+  const totalPx = (CAL_END_HOUR-CAL_START_HOUR)*CAL_PX_PER_HOUR
+  document.getElementById('cal-days-grid').innerHTML = days.map(day=>{
+    const dayTasks = allTasks.filter(t=>t.scheduled_date===day && t.task_type!=='bank' && t.start_time)
+    const dayGcal = gcalEvents.filter(ev=>ev.day===day)
+    const isToday = day===state.today
+
+    const hourLines = Array.from({length:CAL_END_HOUR-CAL_START_HOUR},(_,i)=>`
+      <div class="cal-hour-line" style="top:${i*CAL_PX_PER_HOUR}px"></div>
+      <div class="cal-half-line" style="top:${i*CAL_PX_PER_HOUR+CAL_PX_PER_HOUR/2}px"></div>`).join('')
+
+    const taskBlocks = dayTasks.map(t=>{
+      const top = minToPx(timeToMin(t.start_time))
+      const dur = t.duration_minutes || 60
+      const h = Math.max(20, dur*CAL_PX_PER_HOUR/60)
+      const typeClass = t.task_type==='top3'?'cal-type-top3':t.task_type==='smaller'?'cal-type-smaller':''
+      const timeLabel = h>=30 ? `<div class="cal-block-time-label">${fmtBlockTime(t.start_time,dur)}</div>` : ''
+      return `<div class="cal-task-block ${typeClass} ${t.completed?'cal-done':''}" id="cal-block-${t.id}"
+        style="top:${top}px;height:${h}px"
+        onmousedown="calBlockMouseDown(event,${t.id},'${day}')">
+        <div class="cal-block-inner">
+          <div class="cal-block-title">${esc(t.title)}</div>${timeLabel}
+        </div>
+        <div class="cal-block-del" onmousedown="event.stopPropagation()" onclick="deleteTask(${t.id})">×</div>
+        <div class="cal-resize-handle" onmousedown="calResizeMouseDown(event,${t.id})"></div>
+      </div>`
+    }).join('')
+
+    const gcalBlocks = dayGcal.map((ev, gi)=>{
+      const idx = gcalEvents.indexOf(ev)
+      const top = minToPx(timeToMin(ev.start_time))
+      const dur = ev.duration_minutes||60
+      const h = Math.max(20, dur*CAL_PX_PER_HOUR/60)
+      const timeLabel = h>=30 ? `<div class="cal-gcal-time-label">${fmtBlockTime(ev.start_time,dur)}</div>` : ''
+      return `<div class="cal-gcal-block" style="top:${top}px;height:${h}px"
+        onclick="showGcalPopup(event,${idx})">
+        <div class="cal-gcal-inner">
+          <div class="cal-gcal-title">${esc(ev.title)}</div>${timeLabel}
+        </div>
+      </div>`
+    }).join('')
+
+    return `<div class="cal-day-col ${isToday?'cal-today-col':''}" id="cal-col-${day}"
+      data-day="${day}" style="height:${totalPx}px"
+      ondragover="calColDragOver(event,'${day}')"
+      ondragleave="calColDragLeave(event,'${day}')"
+      ondrop="calColDrop(event,'${day}')">${hourLines}${gcalBlocks}${taskBlocks}</div>`
+  }).join('')
+
+  // Scroll to 7am (top) — full day fits without scrolling at 44px/hr
+  const scr = document.getElementById('cal-scroll-area')
+  if (scr && !scr.dataset.init) {
+    scr.scrollTop = 0
+    scr.dataset.init = '1'
+  }
+
+  // "Now" line
+  if (days.includes(state.today)) {
+    const now = new Date(), nowMin = now.getHours()*60+now.getMinutes()
+    if (nowMin>=CAL_START_HOUR*60 && nowMin<CAL_END_HOUR*60) {
+      const col = document.getElementById(`cal-col-${state.today}`)
+      if (col) {
+        const line = document.createElement('div')
+        line.className = 'cal-now-line'
+        line.style.top = `${minToPx(nowMin)}px`
+        col.appendChild(line)
+      }
+    }
+  }
+}
+
+function calPrevWeek() { _calWeekStart = addDays(_calWeekStart,-7); renderCalendar() }
+function calNextWeek() { _calWeekStart = addDays(_calWeekStart,7); renderCalendar() }
+function calThisWeek() { _calWeekStart = getSunday(new Date()); renderCalendar() }
+
+// Drag from unscheduled panel
+let _calUnschDragId = null
+function calUnschDragStart(e, id) {
+  _calUnschDragId = id
+  e.dataTransfer.setData('text/plain', String(id))
+  e.dataTransfer.effectAllowed = 'move'
+  setTimeout(()=>document.getElementById(`cal-unsch-${id}`)?.classList.add('dragging'),0)
+}
+function calUnschDragEnd(id) {
+  document.getElementById(`cal-unsch-${id}`)?.classList.remove('dragging')
+  _calUnschDragId = null
+}
+function calColDragOver(e, day) {
+  e.preventDefault()
+  document.getElementById(`cal-col-${day}`)?.classList.add('cal-drop-active')
+}
+function calColDragLeave(e, day) {
+  if (!e.currentTarget.contains(e.relatedTarget))
+    document.getElementById(`cal-col-${day}`)?.classList.remove('cal-drop-active')
+}
+async function calColDrop(e, day) {
+  e.preventDefault()
+  document.getElementById(`cal-col-${day}`)?.classList.remove('cal-drop-active')
+  const id = parseInt(e.dataTransfer.getData('text/plain'))
+  if (!id) return
+  const col = document.getElementById(`cal-col-${day}`)
+  const rect = col.getBoundingClientRect()
+  const rawMin = pxToMin(e.clientY - rect.top)
+  const clampedMin = Math.max(CAL_START_HOUR*60, Math.min((CAL_END_HOUR-1)*60, Math.round(rawMin/15)*15))
+  const t = taskBefore(id)
+  if (t) pushUndo({taskId:id, fields:{scheduled_date:t.scheduled_date||'',start_time:t.start_time||''}})
+  await api('PUT',`/api/tasks/${id}`,{scheduled_date:day, start_time:minToTime(clampedMin), duration_minutes:t?.duration_minutes||60})
+  calPushToGcal(id)
+  renderCalendar()
+}
+
+// Move existing block
+function calBlockMouseDown(e, id, day) {
+  if (e.target.classList.contains('cal-resize-handle')) return
+  e.preventDefault()
+  const task = state._tasksCache.find(t=>t.id===id)
+  if (!task) return
+  const block = document.getElementById(`cal-block-${id}`)
+  if (!block) return
+  const colRects = {}
+  document.querySelectorAll('.cal-day-col').forEach(c=>{ colRects[c.dataset.day]=c.getBoundingClientRect() })
+  _calMoving = {
+    id, day, origStartMin:timeToMin(task.start_time), duration:task.duration_minutes||60,
+    origY:e.clientY, block, colRects, newDay:day, newMin:timeToMin(task.start_time), currentDay:day
+  }
+  block.classList.add('cal-moving')
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', _calBlockMove, {passive:false})
+  document.addEventListener('mouseup', _calBlockUp)
+}
+function _calBlockMove(e) {
+  if (!_calMoving) return
+  e.preventDefault()
+  const {block, origStartMin, duration, origY, colRects} = _calMoving
+  let hovDay = _calMoving.day
+  for (const [d,rect] of Object.entries(colRects)) {
+    if (e.clientX>=rect.left && e.clientX<rect.right) { hovDay=d; break }
+  }
+  _calMoving.newDay = hovDay
+  const deltaMin = Math.round((e.clientY-origY)/CAL_PX_PER_HOUR*60/15)*15
+  const newMin = Math.max(CAL_START_HOUR*60, Math.min(CAL_END_HOUR*60-duration, origStartMin+deltaMin))
+  _calMoving.newMin = newMin
+  block.style.top = `${minToPx(newMin)}px`
+  if (hovDay !== _calMoving.currentDay) {
+    const newCol = document.getElementById(`cal-col-${hovDay}`)
+    if (newCol) { newCol.appendChild(block); _calMoving.currentDay = hovDay }
+  }
+}
+async function _calBlockUp(e) {
+  if (!_calMoving) return
+  document.removeEventListener('mousemove', _calBlockMove)
+  document.removeEventListener('mouseup', _calBlockUp)
+  document.body.style.userSelect = ''
+  document.getElementById('cal-unscheduled-panel')?.classList.remove('cal-panel-drop-active')
+  const {id, day, newDay, origStartMin, newMin, block} = _calMoving
+  block.classList.remove('cal-moving')
+  const task = state._tasksCache.find(t=>t.id===id)
+  if (task) pushUndo({taskId:id, fields:{scheduled_date:task.scheduled_date||'',start_time:task.start_time||''}})
+  const droppedOnPanel = document.elementFromPoint(e.clientX, e.clientY)?.closest('#cal-unscheduled-panel')
+  if (droppedOnPanel) {
+    await api('PUT',`/api/tasks/${id}`,{start_time:'', duration_minutes:60})
+    calDeleteFromGcal(id)
+  } else {
+    await api('PUT',`/api/tasks/${id}`,{scheduled_date:newDay||day, start_time:minToTime(newMin!==undefined?newMin:origStartMin)})
+    calPushToGcal(id)
+  }
+  _calMoving = null
+  renderCalendar()
+}
+
+// Resize
+function calResizeMouseDown(e, id) {
+  e.stopPropagation(); e.preventDefault()
+  const task = state._tasksCache.find(t=>t.id===id)
+  if (!task) return
+  _calResizing = {
+    id, origDuration:task.duration_minutes||60, origY:e.clientY,
+    block:document.getElementById(`cal-block-${id}`), newDuration:task.duration_minutes||60
+  }
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', _calResizeMove, {passive:false})
+  document.addEventListener('mouseup', _calResizeUp)
+}
+function _calResizeMove(e) {
+  if (!_calResizing) return
+  e.preventDefault()
+  const {block, origDuration, origY} = _calResizing
+  const deltaMin = Math.round((e.clientY-origY)/CAL_PX_PER_HOUR*60/15)*15
+  const newDur = Math.max(15, origDuration+deltaMin)
+  _calResizing.newDuration = newDur
+  block.style.height = `${Math.max(20, newDur*CAL_PX_PER_HOUR/60)}px`
+  const task = state._tasksCache.find(t=>t.id===_calResizing.id)
+  const tl = block.querySelector('.cal-block-time-label')
+  if (tl && task) tl.textContent = fmtBlockTime(task.start_time, newDur)
+}
+async function _calResizeUp() {
+  if (!_calResizing) return
+  document.removeEventListener('mousemove', _calResizeMove)
+  document.removeEventListener('mouseup', _calResizeUp)
+  document.body.style.userSelect = ''
+  const {id, origDuration, newDuration} = _calResizing
+  const task = state._tasksCache.find(t=>t.id===id)
+  if (task) pushUndo({taskId:id, fields:{duration_minutes:task.duration_minutes||60}})
+  await api('PUT',`/api/tasks/${id}`,{duration_minutes:newDuration})
+  calPushToGcal(id)
+  _calResizing = null
+  renderCalendar()
+}
+
+// GCal auto-push
+async function calPushToGcal(id) {
+  if (!state._calConnected) return
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  api('POST', `/api/calendar/push-task/${id}`, {timezone: tz})
+}
+async function calDeleteFromGcal(id) {
+  if (!state._calConnected) return
+  api('DELETE', `/api/calendar/push-task/${id}`)
+}
+
+// Panel drag-over feedback (for mouse-based block dragging)
+function calPanelDragOver(e) { e.preventDefault(); document.getElementById('cal-unscheduled-panel')?.classList.add('cal-panel-drop-active') }
+function calPanelDragLeave(e) { if (!e.currentTarget.contains(e.relatedTarget)) document.getElementById('cal-unscheduled-panel')?.classList.remove('cal-panel-drop-active') }
+async function calPanelDrop(e) {
+  e.preventDefault()
+  document.getElementById('cal-unscheduled-panel')?.classList.remove('cal-panel-drop-active')
+  const id = parseInt(e.dataTransfer.getData('text/plain'))
+  if (!id) return
+  const task = taskBefore(id)
+  if (task) pushUndo({taskId:id, fields:{start_time:task.start_time||''}})
+  await api('PUT',`/api/tasks/${id}`,{start_time:'', duration_minutes:60})
+  calDeleteFromGcal(id)
+  renderCalendar()
+}
+
+// Also show panel highlight when mouse-dragging a block over it
+document.addEventListener('mousemove', e => {
+  if (!_calMoving) return
+  const overPanel = document.elementFromPoint(e.clientX, e.clientY)?.closest('#cal-unscheduled-panel')
+  document.getElementById('cal-unscheduled-panel')?.classList.toggle('cal-panel-drop-active', !!overPanel)
+})
+
+// GCal event popup
+function showGcalPopup(e, idx) {
+  e.stopPropagation()
+  closeGcalPopup()
+  const ev = (window._calGcalCache||[])[idx]
+  if (!ev) return
+  const popup = document.getElementById('cal-gcal-popup')
+  popup.innerHTML = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="font-medium text-sm text-gray-800 mb-1 leading-snug">${esc(ev.title)}</div>
+        <div class="text-xs text-gray-500">${fmtBlockTime(ev.start_time, ev.duration_minutes)}</div>
+      </div>
+      <button onmousedown="event.stopPropagation()" onclick="closeGcalPopup()" class="text-gray-300 hover:text-gray-600 text-lg leading-none mt-0.5 flex-shrink-0">×</button>
+    </div>`
+  const x = Math.min(e.clientX + 8, window.innerWidth - 290)
+  const y = Math.min(e.clientY + 8, window.innerHeight - 80)
+  popup.style.left = `${x}px`
+  popup.style.top = `${y}px`
+  popup.classList.remove('hidden')
+  setTimeout(() => document.addEventListener('click', closeGcalPopup, {once:true}), 0)
+}
+function closeGcalPopup() {
+  document.getElementById('cal-gcal-popup')?.classList.add('hidden')
+}
+
+// ── API KEY ───────────────────────────────────────────────────────────────
+
+function showApiModal() { document.getElementById('api-modal').classList.remove('hidden') }
+function closeApiModal(evt) {
+  if (!evt||evt.target===document.getElementById('api-modal'))
+    document.getElementById('api-modal').classList.add('hidden')
+}
+async function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim(); if (!key) return
+  const r = await fetch('/api/set-api-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})})
+  const result = await r.json()
+  if (result.ok) {
+    localStorage.setItem('anthropic_api_key',key)
+    document.getElementById('api-status').textContent='API key set ✓'
+    document.getElementById('api-status').className='px-2 text-xs text-green-500 cursor-pointer'
+    closeApiModal()
+  }
+}
+function checkApiStatus() {
+  const key = localStorage.getItem('anthropic_api_key')
+  const el = document.getElementById('api-status')
+  if (key) { el.textContent='API key set ✓'; el.className='px-2 text-xs text-green-500 cursor-pointer' }
+}
+
+// ── ARCHIVE ───────────────────────────────────────────────────────────────
+
+function checkArchiveBanner() {
+  if (new Date().getDay() !== 0) return
+  document.getElementById('archive-banner')?.classList.remove('hidden')
+}
+
+async function archiveCurrentWeek() {
+  const res = await api('POST', '/api/archive/week')
+  document.getElementById('archive-banner').classList.add('hidden')
+  briefToast(`${res.archived || 0} task${(res.archived||0)===1?'':'s'} archived`)
+  if (state.section === 'week') renderWeek()
+}
+
+async function renderArchive() {
+  const el = document.getElementById('archive-list')
+  el.innerHTML = '<div class="text-sm text-gray-400">Loading...</div>'
+  const res = await api('GET', '/api/archive/weeks')
+  const weeks = res.weeks || []
+  if (!weeks.length) {
+    el.innerHTML = '<p class="text-sm text-gray-400 italic">No archived weeks yet. On Sundays, use the prompt on your Master List to archive.</p>'
+    return
+  }
+  el.innerHTML = weeks.map(archWeekHTML).join('')
+}
+
+function archWeekHTML(w) {
+  const mon = new Date(w.week + 'T12:00:00')
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+  const fmt = d => d.toLocaleDateString('en-US', {month:'short', day:'numeric'})
+  const label = `${fmt(mon)} – ${fmt(sun)}`
+  const id = `aw-${w.week}`
+  const incomplete = w.tasks.filter(t => !t.completed)
+  const done = w.tasks.filter(t => t.completed)
+
+  const incHTML = incomplete.map(t => `
+    <div class="flex items-center gap-2 py-1.5 group/row" id="arc-task-${t.id}">
+      <div class="w-3.5 h-3.5 border border-gray-300 rounded-full flex-shrink-0"></div>
+      <span class="text-sm text-gray-700 flex-1 leading-snug">${esc(t.title)}</span>
+      <button onclick="restoreTask(${t.id})" class="opacity-0 group-hover/row:opacity-100 text-xs text-blue-500 hover:text-blue-700 transition-opacity whitespace-nowrap flex-shrink-0 ml-2">→ This week</button>
+    </div>`).join('')
+
+  const doneHTML = done.map(t => `
+    <div class="flex items-center gap-2 py-1.5">
+      <div class="w-3.5 h-3.5 bg-gray-200 rounded-full flex-shrink-0"></div>
+      <span class="text-sm line-through text-gray-400 leading-snug">${esc(t.title)}</span>
+    </div>`).join('')
+
+  const meta = `${w.tasks.length} task${w.tasks.length===1?'':'s'}${incomplete.length?' · '+incomplete.length+' open':''}`
+  return `
+    <div class="bg-white rounded-xl border border-gray-100 mb-3 overflow-hidden">
+      <button onclick="toggleArchWeek('${id}')" class="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors text-left">
+        <div class="flex items-center gap-2">
+          <svg id="${id}-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-gray-400 transition-transform"><polyline points="9 18 15 12 9 6"/></svg>
+          <span class="font-medium text-sm text-gray-800">Week of ${label}</span>
+        </div>
+        <span class="text-xs text-gray-400">${meta}</span>
+      </button>
+      <div id="${id}" class="hidden px-5 pb-4 border-t border-gray-50">
+        ${incHTML}
+        ${done.length && incomplete.length ? '<div class="my-1 border-t border-gray-100"></div>' : ''}
+        ${doneHTML}
+        ${!w.tasks.length ? '<p class="text-sm text-gray-400 italic py-2">Nothing here</p>' : ''}
+      </div>
+    </div>`
+}
+
+function toggleArchWeek(id) {
+  const body = document.getElementById(id)
+  const chev = document.getElementById(id + '-chev')
+  const nowHidden = body.classList.toggle('hidden')
+  chev.style.transform = nowHidden ? '' : 'rotate(90deg)'
+}
+
+async function restoreTask(id) {
+  const el = document.getElementById(`arc-task-${id}`)
+  if (el) el.style.opacity = '0.4'
+  await api('POST', `/api/tasks/${id}/restore`)
+  if (el) el.remove()
+  briefToast('Task moved back to Master List')
+}
+
+function briefToast(msg) {
+  let el = document.getElementById('brief-toast')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'brief-toast'
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;font-size:13px;padding:10px 18px;border-radius:10px;z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:opacity 0.4s;pointer-events:none;white-space:nowrap'
+    document.body.appendChild(el)
+  }
+  el.textContent = msg
+  el.style.opacity = '1'
+  clearTimeout(el._t)
+  el._t = setTimeout(() => { el.style.opacity = '0' }, 2200)
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+
+async function init() {
+  checkApiStatus()
+  checkCalStatus()
+  await loadReminders()
+  checkArchiveBanner()
+  showSection('today')
+}
+
+init()
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+}
+</script>
+</body>
+</html>
