@@ -12,6 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR = os.environ.get('DATA_DIR', _HERE)
+os.makedirs(_DATA_DIR, exist_ok=True)
 DB_PATH = os.path.join(_DATA_DIR, 'data.db')
 
 
