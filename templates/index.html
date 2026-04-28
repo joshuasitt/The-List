@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The List</title>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <link rel="manifest" href="/static/manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -77,6 +78,13 @@
     .task-row.task-selected { background: #EFF6FF !important; border-radius: 6px; }
     .task-row.task-selected .drag-handle { opacity: 1; color: #93C5FD; }
 
+    .select-checkbox { width: 16px; height: 16px; min-width: 16px; border-radius: 4px; border: 1.5px solid #D1D5DB; background: white; display: none; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+    .select-mode .select-checkbox { display: flex; }
+    .select-checkbox.checked { background: #2563EB; border-color: #2563EB; }
+    .select-checkbox.checked::after { content: ''; display: block; width: 8px; height: 5px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translate(1px,-1px); }
+    .select-mode .drag-handle { display: none; }
+    #select-bar { transition: transform 0.25s ease; }
+
     #inline-day-picker { position: fixed; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); padding: 8px; z-index: 200; min-width: 180px; }
     #inline-day-picker button { display: block; width: 100%; text-align: left; font-size: 13px; padding: 6px 10px; border-radius: 6px; color: #374151; background: none; border: none; cursor: pointer; }
     #inline-day-picker button:hover { background: #F3F4F6; }
@@ -149,6 +157,9 @@
     #cal-gcal-popup { position: fixed; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 12px 14px; z-index: 300; min-width: 210px; max-width: 290px; }
     .cal-gcal-syncing { opacity: 0.7; }
     #sidebar.mobile-open { display: flex !important; position: fixed; top: 0; left: 0; height: 100vh; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+    @media (max-width: 768px) { .drag-handle { opacity: 1 !important; color: #D1D0CC; } }
+    .sortable-ghost { opacity: 0.35; background: #E8E5DE !important; border-radius: 8px; }
+    .sortable-chosen { background: #F5F4F0; border-radius: 8px; }
   </style>
 </head>
 <body class="font-sans text-gray-900 h-screen flex overflow-hidden">
@@ -283,7 +294,10 @@
   <!-- WEEK / MASTER -->
   <section id="section-week" class="hidden flex-1 overflow-auto px-8 py-6">
     <div class="max-w-xl">
-      <h1 class="text-xl font-semibold mb-5">Master List</h1>
+      <h1 class="text-xl font-semibold mb-5 flex items-center justify-between">
+        Master List
+        <button id="select-mode-btn" onclick="toggleSelectMode()" class="text-xs font-normal text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100">Select</button>
+      </h1>
 
       <!-- Sunday archive prompt -->
       <div id="archive-banner" class="hidden mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -495,6 +509,13 @@
 <!-- INLINE DAY PICKER -->
 <div id="inline-day-picker" class="hidden" onmouseleave="closeInlineDayPicker()"></div>
 
+<!-- BULK SELECT BAR -->
+<div id="select-bar" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-gray-900 text-white px-4 py-3 flex items-center gap-3 shadow-2xl">
+  <span id="select-count" class="text-sm font-medium flex-shrink-0 text-gray-200"></span>
+  <div id="select-day-btns" class="flex-1 flex items-center gap-1.5 overflow-x-auto"></div>
+  <button onclick="exitSelectMode()" class="text-xs text-gray-400 hover:text-white flex-shrink-0 px-2 py-1">Cancel</button>
+</div>
+
 <!-- RESCHEDULE POPUP -->
 <div id="reschedule-modal" class="hidden fixed inset-0 z-50" onclick="closeRescheduleModal(event)">
   <div id="reschedule-popup" class="absolute bg-white border border-gray-200 rounded-xl shadow-xl p-4 w-60">
@@ -571,6 +592,7 @@ const state = {
   articleTab: 'url',
   lastSummary: '',
   rescheduleTaskId: null,
+  selectMode: false,
   _backlogTitles: [],
   _tasksCache: [],
 }
@@ -617,6 +639,7 @@ function closeMobileNav() {
 }
 
 function showSection(name) {
+  if (name !== 'week') exitSelectMode()
   state.section = name
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.section===name))
   document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.toggle('hidden', el.id!==`section-${name}`))
@@ -850,6 +873,7 @@ const _selected = new Set()
 
 function taskRowClick(e, id) {
   if (e.target.closest('button,input,textarea,[contenteditable="true"],.task-check,.drag-handle')) return
+  if (state.selectMode) { toggleTaskSelect(id); return }
   if (e.shiftKey && _selected.size > 0) {
     const allRows = Array.from(document.querySelectorAll('[id^="task-"]'))
     const lastId = [..._selected].at(-1)
@@ -870,8 +894,13 @@ function taskRowClick(e, id) {
 }
 
 function clearSelection() {
-  _selected.forEach(id => document.getElementById(`task-${id}`)?.classList.remove('task-selected'))
+  _selected.forEach(id => {
+    const el = document.getElementById(`task-${id}`)
+    el?.classList.remove('task-selected')
+    el?.querySelector('.select-checkbox')?.classList.remove('checked')
+  })
   _selected.clear()
+  updateSelectBar()
 }
 
 // ── UNDO ──────────────────────────────────────────────────────────────────
@@ -899,6 +928,83 @@ document.addEventListener('keydown', e => {
 // ── DRAG & DROP ───────────────────────────────────────────────────────────
 
 let _dragId = null
+
+function toggleTaskSelect(id) {
+  const el = document.getElementById(`task-${id}`)
+  const cb = el?.querySelector('.select-checkbox')
+  if (_selected.has(id)) {
+    _selected.delete(id)
+    el?.classList.remove('task-selected')
+    cb?.classList.remove('checked')
+  } else {
+    _selected.add(id)
+    el?.classList.add('task-selected')
+    cb?.classList.add('checked')
+  }
+  updateSelectBar()
+}
+
+function toggleSelectMode() {
+  state.selectMode = !state.selectMode
+  clearSelection()
+  const btn = document.getElementById('select-mode-btn')
+  const content = document.querySelector('#section-week .max-w-xl')
+  if (state.selectMode) {
+    btn.textContent = 'Done'
+    btn.classList.add('text-blue-500')
+    btn.classList.remove('text-gray-400')
+    content?.classList.add('select-mode')
+  } else {
+    btn.textContent = 'Select'
+    btn.classList.remove('text-blue-500')
+    btn.classList.add('text-gray-400')
+    content?.classList.remove('select-mode')
+    document.getElementById('select-bar').classList.add('hidden')
+  }
+}
+
+function exitSelectMode() {
+  if (state.selectMode) toggleSelectMode()
+}
+
+function updateSelectBar() {
+  const bar = document.getElementById('select-bar')
+  const count = _selected.size
+  if (!state.selectMode || count === 0) { bar.classList.add('hidden'); return }
+  bar.classList.remove('hidden')
+  document.getElementById('select-count').textContent = `${count} task${count>1?'s':''}`
+  const todayNoon = new Date(state.today + 'T12:00:00')
+  const dow = todayNoon.getDay()
+  const sunNoon = new Date(todayNoon); sunNoon.setDate(todayNoon.getDate() - dow)
+  function nd(base, offset) {
+    const d = new Date(base); d.setDate(base.getDate() + offset)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+  const days = [
+    {label:'Sun', date: nd(sunNoon,0)},
+    {label:'Mon', date: nd(sunNoon,1)},
+    {label:'Tue', date: nd(sunNoon,2)},
+    {label:'Wed', date: nd(sunNoon,3)},
+    {label:'Thu', date: nd(sunNoon,4)},
+    {label:'Fri', date: nd(sunNoon,5)},
+    {label:'Next ›', date: nd(sunNoon,7)},
+  ]
+  document.getElementById('select-day-btns').innerHTML =
+    days.map(d => `<button onclick="bulkSetDate('${d.date}')" class="text-xs px-2.5 py-1.5 rounded-lg flex-shrink-0 font-medium ${d.date===state.today?'bg-amber-500 text-white':'bg-gray-700 hover:bg-gray-500 text-gray-200'}">${d.label}</button>`).join('') +
+    `<button onclick="bulkSetDate('')" class="text-xs px-2.5 py-1.5 rounded-lg flex-shrink-0 text-red-400 bg-gray-800 hover:bg-red-600 hover:text-white">Clear</button>`
+}
+
+async function bulkSetDate(date) {
+  const ids = [..._selected]
+  if (!ids.length) return
+  const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId:id, fields:{scheduled_date:t.scheduled_date||''}} : null }).filter(Boolean)
+  if (before.length) pushUndo(before)
+  await Promise.all(ids.map(id => api('PUT', `/api/tasks/${id}`, {scheduled_date: date})))
+  exitSelectMode()
+  if (state.section==='today') renderToday()
+  if (state.section==='week') renderWeek()
+  briefToast(`${ids.length} task${ids.length>1?'s':''} updated`)
+}
 
 function dragStart(e, id) {
   if (!_selected.has(id)) { clearSelection(); _selected.add(id); document.getElementById(`task-${id}`)?.classList.add('task-selected') }
@@ -969,6 +1075,7 @@ async function dragDrop(e, targetId) {
 
 async function dropOnSection(e, containerId) {
   e.preventDefault()
+  if (window._sortableDragging) return
   document.querySelectorAll('.task-row').forEach(el => el.classList.remove('drag-over-top','dragging'))
   if (!_dragId) return
   const container = document.getElementById(containerId)
@@ -1307,6 +1414,7 @@ async function renderWeek() {
       ondragstart="dragStart(event,${task.id})" ondragover="dragOver(event,${task.id})"
       ondragleave="dragLeave(event,${task.id})" ondragend="dragEnd(${task.id})" ondrop="dragDrop(event,${task.id})">
       <div class="flex items-center gap-2.5">
+        <div class="select-checkbox ${_selected.has(task.id)?'checked':''}"></div>
         <div class="drag-handle" onmousedown="document.getElementById('task-${task.id}').draggable=true" onmouseup="document.getElementById('task-${task.id}').draggable=false">
           <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
         </div>
@@ -1355,6 +1463,7 @@ async function renderWeek() {
 
   const bankEl = document.getElementById('master-bank')
   if (bankEl) bankEl.innerHTML = bank.map(masterRow).join('')
+  initSortable()
 }
 
 function toggleMasterArchive() {
@@ -2069,6 +2178,47 @@ function checkApiStatus() {
   const key = localStorage.getItem('anthropic_api_key')
   const el = document.getElementById('api-status')
   if (key) { el.textContent='API key set ✓'; el.className='px-2 text-xs text-green-500 cursor-pointer' }
+}
+
+// ── SORTABLE ──────────────────────────────────────────────────────────────
+
+function initSortable() {
+  if (typeof Sortable === 'undefined') return
+  const sections = [
+    { id: 'master-main',    type: 'main' },
+    { id: 'master-smaller', type: 'smaller' },
+    { id: 'master-bank',    type: 'bank' },
+    { id: 'top3-list',      type: 'top3' },
+  ]
+  sections.forEach(({ id, type }) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    if (el._sortable) { el._sortable.destroy() }
+    el._sortable = Sortable.create(el, {
+      group: 'master-tasks',
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      delay: 100,
+      delayOnTouchOnly: true,
+      onStart: () => { window._sortableDragging = true },
+      onEnd: async (evt) => {
+        window._sortableDragging = false
+        const taskId = parseInt(evt.item.id.replace('task-', ''))
+        const typeMap = { 'master-main': 'main', 'master-smaller': 'smaller', 'master-bank': 'bank', 'top3-list': 'top3' }
+        const newType = typeMap[evt.to.id] || type
+        if (newType !== type || evt.from !== evt.to) {
+          await api('PUT', `/api/tasks/${taskId}`, { task_type: newType })
+        }
+        const items = [...evt.to.querySelectorAll('[id^="task-"]')]
+        items.forEach((el, i) => {
+          const id = parseInt(el.id.replace('task-', ''))
+          api('PUT', `/api/tasks/${id}`, { sort_order: i })
+        })
+      }
+    })
+  })
 }
 
 // ── ARCHIVE ───────────────────────────────────────────────────────────────
