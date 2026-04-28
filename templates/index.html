@@ -148,12 +148,16 @@
     .cal-unscheduled.cal-panel-drop-active { background: #EFF6FF; }
     #cal-gcal-popup { position: fixed; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 12px 14px; z-index: 300; min-width: 210px; max-width: 290px; }
     .cal-gcal-syncing { opacity: 0.7; }
+    #sidebar.mobile-open { display: flex !important; position: fixed; top: 0; left: 0; height: 100vh; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
   </style>
 </head>
 <body class="font-sans text-gray-900 h-screen flex overflow-hidden">
 
+<!-- Mobile nav overlay -->
+<div id="mobile-overlay" onclick="toggleMobileNav()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:40"></div>
+
 <!-- SIDEBAR -->
-<div id="sidebar" class="w-44 min-w-44 flex flex-col py-5 px-3 border-r border-gray-200 bg-sidebar overflow-y-auto">
+<div id="sidebar" class="w-44 min-w-44 hidden md:flex flex-col py-5 px-3 border-r border-gray-200 bg-sidebar overflow-y-auto" style="z-index:50">
   <div class="px-2 mb-5">
     <div class="text-xs font-semibold tracking-widest text-gray-400 uppercase">The List</div>
   </div>
@@ -195,6 +199,13 @@
 
 <!-- MAIN -->
 <div id="main" class="flex-1 overflow-hidden flex flex-col">
+  <!-- Mobile top bar -->
+  <div class="md:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+    <button onclick="toggleMobileNav()" class="text-gray-500 p-1 -ml-1">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span id="mobile-section-title" class="font-semibold text-sm text-gray-800">Today</span>
+  </div>
 
   <!-- TODAY -->
   <section id="section-today" class="flex-1 overflow-hidden flex">
@@ -593,10 +604,26 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────
 
+function toggleMobileNav() {
+  const s = document.getElementById('sidebar')
+  const o = document.getElementById('mobile-overlay')
+  const open = s.classList.toggle('mobile-open')
+  o.style.display = open ? 'block' : 'none'
+}
+
+function closeMobileNav() {
+  document.getElementById('sidebar').classList.remove('mobile-open')
+  document.getElementById('mobile-overlay').style.display = 'none'
+}
+
 function showSection(name) {
   state.section = name
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.section===name))
   document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.toggle('hidden', el.id!==`section-${name}`))
+  const titles = {today:'Today',week:'Master',ideas:'Ideas',articles:'Articles',meetings:'Meetings',calendar:'Calendar',archive:'Archive'}
+  const t = document.getElementById('mobile-section-title')
+  if (t) t.textContent = titles[name] || name
+  closeMobileNav()
   if (name==='today') renderToday()
   if (name==='week') renderWeek()
   if (name==='ideas') renderIdeas()
