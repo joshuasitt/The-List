@@ -2253,21 +2253,46 @@ function archWeekHTML(w) {
   const fmt = d => d.toLocaleDateString('en-US', {month:'short', day:'numeric'})
   const label = `${fmt(mon)} – ${fmt(sun)}`
   const id = `aw-${w.week}`
+
   const incomplete = w.tasks.filter(t => !t.completed)
   const done = w.tasks.filter(t => t.completed)
 
-  const incHTML = incomplete.map(t => `
-    <div class="flex items-center gap-2 py-1.5 group/row" id="arc-task-${t.id}">
-      <div class="w-3.5 h-3.5 border border-gray-300 rounded-full flex-shrink-0"></div>
-      <span class="text-sm text-gray-700 flex-1 leading-snug">${esc(t.title)}</span>
-      <button onclick="restoreTask(${t.id})" class="opacity-0 group-hover/row:opacity-100 text-xs text-blue-500 hover:text-blue-700 transition-opacity whitespace-nowrap flex-shrink-0 ml-2">→ This week</button>
-    </div>`).join('')
+  function taskRow(t) {
+    const isOpen = !t.completed
+    const dot = isOpen
+      ? `<div class="w-3 h-3 border border-gray-300 rounded-full flex-shrink-0"></div>`
+      : `<div class="w-3 h-3 bg-gray-200 rounded-full flex-shrink-0"></div>`
+    const title = isOpen
+      ? `<span class="text-sm text-gray-700 flex-1 leading-snug">${esc(t.title)}</span>`
+      : `<span class="text-sm line-through text-gray-400 flex-1 leading-snug">${esc(t.title)}</span>`
+    const restore = isOpen
+      ? `<button onclick="restoreTask(${t.id})" class="opacity-0 group-hover/row:opacity-100 text-xs text-blue-500 hover:text-blue-700 transition-opacity whitespace-nowrap flex-shrink-0 ml-1">→ This week</button>`
+      : ''
+    return `<div class="flex items-center gap-2 py-1 group/row" id="arc-task-${t.id}">${dot}${title}${restore}</div>`
+  }
 
-  const doneHTML = done.map(t => `
-    <div class="flex items-center gap-2 py-1.5">
-      <div class="w-3.5 h-3.5 bg-gray-200 rounded-full flex-shrink-0"></div>
-      <span class="text-sm line-through text-gray-400 leading-snug">${esc(t.title)}</span>
-    </div>`).join('')
+  function typeSection(tasks, sectionLabel, labelColor) {
+    if (!tasks.length) return ''
+    return `
+      <div class="mb-2">
+        <div class="text-xs font-medium ${labelColor} mb-1">${sectionLabel}</div>
+        ${tasks.map(taskRow).join('')}
+      </div>`
+  }
+
+  const priorities = incomplete.filter(t => t.task_type === 'main' || t.task_type === 'top3')
+  const smaller = incomplete.filter(t => t.task_type === 'smaller')
+  const other = incomplete.filter(t => t.task_type !== 'main' && t.task_type !== 'top3' && t.task_type !== 'smaller')
+
+  const incHTML = typeSection(priorities, 'Priorities', 'text-gray-500') +
+                  typeSection(smaller, 'Smaller', 'text-gray-400') +
+                  typeSection(other, 'Other', 'text-gray-400')
+
+  const doneHTML = done.length ? `
+    <div class="mt-2 pt-2 border-t border-gray-100">
+      <div class="text-xs font-medium text-gray-300 mb-1">Completed</div>
+      ${done.map(taskRow).join('')}
+    </div>` : ''
 
   const meta = `${w.tasks.length} task${w.tasks.length===1?'':'s'}${incomplete.length?' · '+incomplete.length+' open':''}`
   return `
@@ -2279,11 +2304,8 @@ function archWeekHTML(w) {
         </div>
         <span class="text-xs text-gray-400">${meta}</span>
       </button>
-      <div id="${id}" class="hidden px-5 pb-4 border-t border-gray-50">
-        ${incHTML}
-        ${done.length && incomplete.length ? '<div class="my-1 border-t border-gray-100"></div>' : ''}
-        ${doneHTML}
-        ${!w.tasks.length ? '<p class="text-sm text-gray-400 italic py-2">Nothing here</p>' : ''}
+      <div id="${id}" class="hidden px-5 pb-4 border-t border-gray-50 pt-3">
+        ${incHTML || doneHTML ? incHTML + doneHTML : '<p class="text-sm text-gray-400 italic py-2">Nothing here</p>'}
       </div>
     </div>`
 }
