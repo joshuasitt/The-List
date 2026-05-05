@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/joshuasitt/.nvm/versions/**)",
+      "Bash(python3 -m pip --version)",
+      "Bash(python3 -m ensurepip --upgrade)",
+      "Bash(chmod +x \"/Users/joshuasitt/Downloads/Claude Friend 1/start.sh\")",
+      "Bash(open:*)",
+      "Bash(scutil --get ComputerName)",
+      "WebFetch(domain:drive.google.com)",
+      "mcp__claude_ai_Google_Drive__search_files",
+      "Bash(curl -s http://localhost:8000)",
+      "Bash(pkill -9 -f \"server.py\")",
+      "Bash(lsof -ti:8000)",
+      "Bash(xargs kill *)",
+      "Bash(pkill -f \"python.*server.py\")",
+      "Bash(python server.py)",
+      "Bash(awk '{print $2}')",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(curl -sv http://localhost:8000/)",
+      "Bash(curl -s -X POST http://localhost:8000/api/archive/week)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8000/api/archive/weeks)",
+      "Bash(curl -s http://localhost:8000/api/tasks)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d\\)} active tasks remain'\\)\")",
+      "WebFetch(domain:web-production-2da92.up.railway.app)",
+      "Bash(curl -s http://localhost:8000/api/export)",
+      "Bash(curl -s -X POST https://web-production-2da92.up.railway.app/api/import -H 'Content-Type: application/json' -d @-)",
+      "Bash(curl -s https://web-production-2da92.up.railway.app/api/export)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\({k:len\\(v\\) for k,v in d.items\\(\\)}\\)\")",
+      "Bash(curl *)",
+      "Bash(python3 -c \"import sys,json; t=json.load\\(sys.stdin\\); print\\(f'{len\\(t\\)} tasks live'\\)\")",
+      "Bash(python3 -c \"import sys,json; t=json.load\\(sys.stdin\\); print\\(f'{len\\(t\\)} tasks'\\); print\\('dates:', set\\(x.get\\('scheduled_date',''\\) for x in t\\)\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import sys,json; t=json.load\\(sys.stdin\\); print\\(f'Active tasks on Railway: {len\\(t\\)}'\\)\")",
+      "Bash(python3 -)"
+    ]
+  }
+}

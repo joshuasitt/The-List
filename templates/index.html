@@ -599,7 +599,7 @@ const state = {
 
 // ── UTILS ─────────────────────────────────────────────────────────────────
 
-function formatDate(d) { return d.toISOString().split('T')[0] }
+function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 function getMonday(d) {
   const date = new Date(d); const day = date.getDay()
   date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day))
@@ -659,7 +659,7 @@ function showSection(name) {
 // ── TODAY ─────────────────────────────────────────────────────────────────
 
 function navDay(delta) {
-  state.viewDay = formatDate(addDays(new Date(state.viewDay), delta))
+  state.viewDay = formatDate(addDays(new Date(state.viewDay + 'T12:00:00'), delta))
   document.getElementById('today-btn')?.classList.toggle('hidden', state.viewDay === state.today)
   renderToday()
 }
@@ -670,7 +670,7 @@ function navToday() {
 }
 
 async function renderToday() {
-  const tomorrow = formatDate(addDays(new Date(state.viewDay), 1))
+  const tomorrow = formatDate(addDays(new Date(state.viewDay + 'T12:00:00'), 1))
   let [todayTasks, tomorrowTasks, allTasks] = await Promise.all([
     api('GET', `/api/tasks?date=${state.viewDay}`),
     api('GET', `/api/tasks?date=${tomorrow}`),
@@ -828,7 +828,7 @@ async function addTaskTomorrow() {
   const input = document.getElementById('tomorrow-input')
   const title = input.value.trim(); if (!title) return
   input.value = ''
-  const tomorrow = formatDate(addDays(new Date(state.viewDay), 1))
+  const tomorrow = formatDate(addDays(new Date(state.viewDay + 'T12:00:00'), 1))
   await api('POST', '/api/tasks', {title, area: 'General', scheduled_date: tomorrow, task_type: 'main'})
   renderToday()
 }
