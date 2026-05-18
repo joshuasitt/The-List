@@ -203,6 +203,7 @@
     </div>
   </div>
   <div class="mt-auto pt-4">
+    <div class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mb-2" onclick="confirmArchiveWeek()">Archive this week →</div>
     <div id="api-status" class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600" onclick="showApiModal()">Set API key</div>
     <div id="cal-status" class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1" onclick="showCalModal()">Connect Calendar</div>
   </div>
@@ -2226,6 +2227,10 @@ function initSortable() {
 function checkArchiveBanner() {
   if (new Date().getDay() !== 0) return
   document.getElementById('archive-banner')?.classList.remove('hidden')
+}
+
+function confirmArchiveWeek() {
+  if (confirm('Archive this week? Active tasks will move to Archive. You can restore them anytime.')) archiveCurrentWeek()
 }
 
 async function archiveCurrentWeek() {
