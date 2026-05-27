@@ -665,6 +665,7 @@ function navDay(delta) {
   renderToday()
 }
 function navToday() {
+  state.today = formatDate(new Date())
   state.viewDay = state.today
   document.getElementById('today-btn')?.classList.add('hidden')
   renderToday()
@@ -1211,7 +1212,7 @@ async function disconnectCal() {
 }
 
 async function pushTomorrow(id) {
-  const tomorrow = formatDate(addDays(new Date(state.today), 1))
+  const tomorrow = formatDate(addDays(new Date(state.today + 'T12:00:00'), 1))
   await api('PUT', `/api/tasks/${id}`, {scheduled_date: tomorrow})
   if (state.section==='today') renderToday()
   if (state.section==='week') renderWeek()
@@ -1386,7 +1387,7 @@ async function renderWeek() {
   }
 
   // Build day options for badge picker
-  const today = new Date(state.today)
+  const today = new Date(state.today + 'T12:00:00')
   const mon = getMonday(today)
   const weekDays = Array.from({length:7},(_,i) => {
     const d = addDays(mon, i)
@@ -1485,7 +1486,7 @@ function toggleWeekSnap() {
 }
 
 async function renderWeekSnap() {
-  const mon = getMonday(new Date(state.viewDay))
+  const mon = getMonday(new Date(state.viewDay + 'T12:00:00'))
   const days = Array.from({length:7},(_,i)=>formatDate(addDays(mon,i)))
   const tasks = await api('GET', `/api/tasks?week_start=${formatDate(mon)}`)
   const grid = document.getElementById('week-snap-grid')
