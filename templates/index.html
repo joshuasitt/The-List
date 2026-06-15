@@ -621,7 +621,20 @@ function taskBefore(id) { return state._tasksCache.find(t => t.id === id) }
 async function api(method, path, body) {
   const opts = { method, headers: {'Content-Type':'application/json'} }
   if (body) opts.body = JSON.stringify(body)
-  return (await fetch(path, opts)).json()
+  // Retry once on transient network/parse failure so a blip never blanks the UI
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(path, opts)
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      return await res.json()
+    } catch (err) {
+      if (attempt === 1) {
+        console.error('API failed:', path, err)
+        throw err
+      }
+      await new Promise(r => setTimeout(r, 600))
+    }
+  }
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
@@ -2348,11 +2361,16 @@ function briefToast(msg) {
 // ── INIT ──────────────────────────────────────────────────────────────────
 
 async function init() {
-  checkApiStatus()
-  checkCalStatus()
-  await loadReminders()
-  checkArchiveBanner()
-  showSection('today')
+  try {
+    checkApiStatus()
+    checkCalStatus()
+    await loadReminders()
+    checkArchiveBanner()
+    showSection('today')
+  } catch (err) {
+    console.error('Init failed, retrying in 1.5s:', err)
+    setTimeout(init, 1500)
+  }
 }
 
 init()
