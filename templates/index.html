@@ -2376,8 +2376,15 @@ async function init() {
 init()
 </script>
 <script>
+// Service worker removed — it caused stale blank-screen loads.
+// Actively unregister any old one still installed on this device and clear its caches.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister())
+  })
+  if (window.caches) {
+    caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
+  }
 }
 </script>
 </body>
