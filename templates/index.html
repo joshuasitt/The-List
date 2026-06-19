@@ -244,7 +244,9 @@
         <!-- Main Priorities -->
         <div class="mb-5">
           <div class="section-label">Main Priorities</div>
-          <div id="today-main" class="space-y-1"></div>
+          <div id="today-main" class="space-y-1 min-h-6"
+            ondragover="event.preventDefault()"
+            ondrop="dropOnToday(event,'today-main')"></div>
           <div id="today-main-empty" class="text-xs text-gray-400 py-2 hidden">Nothing here yet.</div>
           <div class="flex items-center gap-2 px-3 py-1.5">
             <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
@@ -257,7 +259,9 @@
         <!-- Smaller To Do's -->
         <div class="mb-5">
           <div class="section-label">Smaller To Do's</div>
-          <div id="today-smaller" class="space-y-1 mb-2"></div>
+          <div id="today-smaller" class="space-y-1 mb-2 min-h-6"
+            ondragover="event.preventDefault()"
+            ondrop="dropOnToday(event,'today-smaller')"></div>
           <div class="flex items-center gap-2 px-3 py-1.5">
             <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
             <input id="smaller-input" class="quick-input text-sm text-gray-500" placeholder="Add smaller task..."
@@ -1064,11 +1068,12 @@ async function dragDrop(e, targetId) {
 
   // Detect task_type from container id
   let newType = null
+  let intoToday = false
   if (container.id === 'master-smaller') newType = 'smaller'
   else if (container.id === 'master-main') newType = 'main'
   else if (container.id === 'master-bank') newType = 'bank'
-  else if (container.id === 'today-smaller') newType = 'smaller'
-  else if (container.id === 'today-main') newType = 'main'
+  else if (container.id === 'today-smaller') { newType = 'smaller'; intoToday = true }
+  else if (container.id === 'today-main') { newType = 'main'; intoToday = true }
 
   // Move all selected rows before target in DOM
   const ids = [..._selected]
@@ -1079,7 +1084,7 @@ async function dragDrop(e, targetId) {
 
   // Save: sort_order for all siblings, plus task_type if changed
   if (newType) {
-    const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0}} : null }).filter(Boolean)
+    const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0, scheduled_date: t.scheduled_date||''}} : null }).filter(Boolean)
     if (before.length) pushUndo(before)
   }
   const siblings = Array.from(container.querySelectorAll('[id^="task-"]'))
@@ -1087,12 +1092,38 @@ async function dragDrop(e, targetId) {
     const sid = parseInt(el.id.replace('task-',''))
     const body = {sort_order: i}
     if (newType && ids.includes(sid)) body.task_type = newType
+    // Dropping into the Today list reschedules the task to the day being viewed
+    // (this is what lets you drag an overdue task down onto today's list)
+    if (intoToday && ids.includes(sid)) body.scheduled_date = state.viewDay
     return api('PUT', `/api/tasks/${sid}`, body)
   })
   await Promise.all(updates)
   clearSelection()
   _dragId = null
   if (state.section === 'week') renderWeek()
+  if (state.section === 'today') renderToday()
+}
+
+async function dropOnToday(e, containerId) {
+  e.preventDefault()
+  document.querySelectorAll('.task-row').forEach(el => el.classList.remove('drag-over-top','dragging'))
+  if (!_dragId) return
+  const container = document.getElementById(containerId)
+  if (!container) return
+  const newType = containerId === 'today-smaller' ? 'smaller' : 'main'
+  const ids = [..._selected]
+  const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0, scheduled_date: t.scheduled_date||''}} : null }).filter(Boolean)
+  if (before.length) pushUndo(before)
+  ids.forEach(sid => { const el = document.getElementById(`task-${sid}`); if (el) container.appendChild(el) })
+  const siblings = Array.from(container.querySelectorAll('[id^="task-"]'))
+  await Promise.all(siblings.map((el, i) => {
+    const sid = parseInt(el.id.replace('task-',''))
+    const body = {sort_order: i}
+    if (ids.includes(sid)) { body.task_type = newType; body.scheduled_date = state.viewDay }
+    return api('PUT', `/api/tasks/${sid}`, body)
+  }))
+  clearSelection(); _dragId = null
+  if (state.section === 'today') renderToday()
 }
 
 async function dropOnSection(e, containerId) {
