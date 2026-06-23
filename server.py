@@ -75,6 +75,10 @@ def init_db():
             goal TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT DEFAULT ''
+        );
     ''')
     conn.commit()
     conn.close()
@@ -474,6 +478,24 @@ def set_week_goal(week_start):
     conn.commit()
     conn.close()
     return jsonify({'week_start': week_start, 'goal': goal})
+
+
+@app.route('/api/settings/<key>', methods=['GET'])
+def get_setting(key):
+    conn = get_db()
+    row = conn.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+    conn.close()
+    return jsonify({'key': key, 'value': row['value'] if row else ''})
+
+@app.route('/api/settings/<key>', methods=['PUT'])
+def set_setting(key):
+    value = request.json.get('value', '')
+    conn = get_db()
+    conn.execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=?',
+                 (key, value, value))
+    conn.commit()
+    conn.close()
+    return jsonify({'key': key, 'value': value})
 
 
 # ── FRONTEND ───────────────────────────────────────────────────────────────
