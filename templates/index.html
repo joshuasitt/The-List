@@ -89,10 +89,14 @@
     #inline-day-picker button { display: block; width: 100%; text-align: left; font-size: 13px; padding: 6px 10px; border-radius: 6px; color: #374151; background: none; border: none; cursor: pointer; }
     #inline-day-picker button:hover { background: #F3F4F6; }
 
-    .top3-slot { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 8px; }
+    /* column so an open notes panel sits under the title, not beside it */
+    .top3-slot { display: flex; flex-direction: column; padding: 6px 4px; border-radius: 8px; }
+    .top3-slot-head { display: flex; align-items: center; gap: 10px; }
     .top3-slot:hover { background: #FAFAF8; }
+    .top3-slot:hover .notes-icon { opacity: 1; }
     .top3-num { font-size: 13px; font-weight: 700; color: #E5E7EB; width: 16px; text-align: center; flex-shrink: 0; }
     .top3-slot.has-task .top3-num { color: #111; }
+    .top3-slot.has-task .top3-num.top3-over { color: #EF4444; }
 
     .day-badge { font-size: 11px; padding: 2px 7px; border-radius: 4px; cursor: pointer; white-space: nowrap; border: 1px solid transparent; transition: all 0.1s; }
     .day-badge.assigned { background: #F3F4F6; color: #6B7280; }
@@ -1430,35 +1434,54 @@ async function renderWeek() {
   const sortActiveLast = arr => [...arr.filter(t=>!t.completed), ...arr.filter(t=>t.completed)]
 
   // Top 3
+  // sort by manual order, not scheduled_date — the API sorts dated tasks last,
+  // which would reshuffle slots the moment you assign a day
   const top3Tasks = tasks.filter(t => t.task_type === 'top3')
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id)
   const top3El = document.getElementById('top3-list')
   if (top3El) {
     let t3html = ''
-    for (let i = 0; i < 3; i++) {
+    // always render every top3 task, even past 3, so extras can't vanish silently
+    const slots = Math.max(3, top3Tasks.length)
+    for (let i = 0; i < slots; i++) {
       const t = top3Tasks[i]
       if (t) {
         const t3badge = t.scheduled_date
           ? `<span class="day-badge ${t.scheduled_date===state.today?'is-today':'assigned'}" onclick="openReschedule(${t.id},event)">${new Date(t.scheduled_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>`
           : `<span class="day-badge unassigned" onclick="openReschedule(${t.id},event)">+ day</span>`
+        const t3HasNotes = t.notes && t.notes.trim()
         t3html += `<div class="top3-slot has-task group" id="task-${t.id}">
-          <span class="top3-num">${i+1}</span>
-          <div class="task-check ${t.completed?'done':''}" onclick="toggleTask(${t.id},${!t.completed})"></div>
-          <span class="flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}"
-            contenteditable="${t.completed?'false':'true'}"
-            onblur="renameTask(${t.id},this.textContent.trim())"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
-          >${esc(t.title)}</span>
-          ${t3badge}
-          <button onclick="deleteTask(${t.id})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 p-1">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div class="top3-slot-head">
+            <span class="top3-num${i >= 3 ? ' top3-over' : ''}" ${i >= 3 ? 'title="Over your top 3 — demote or finish this"' : ''}>${i+1}</span>
+            <div class="task-check ${t.completed?'done':''}" onclick="toggleTask(${t.id},${!t.completed})"></div>
+            <span class="flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}"
+              contenteditable="${t.completed?'false':'true'}"
+              onblur="renameTask(${t.id},this.textContent.trim())"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            >${esc(t.title)}</span>
+            <button title="Notes" onclick="toggleNotes(${t.id})" class="notes-icon p-1 ${t3HasNotes?'has-notes':''}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </button>
+            ${t3badge}
+            <button onclick="deleteTask(${t.id})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 p-1">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="task-notes-wrap pl-7 ${t3HasNotes?'open':''}" id="notes-${t.id}">
+            <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
+              onblur="saveTaskNotes(${t.id},this.value)"
+              onkeydown="if(event.key==='Escape')this.blur()"
+            >${esc(t.notes||'')}</textarea>
+          </div>
         </div>`
       } else {
         t3html += `<div class="top3-slot">
-          <span class="top3-num">${i+1}</span>
-          <input class="flex-1 text-sm text-gray-400 bg-transparent border-none outline-none placeholder:text-gray-300"
-            placeholder="Add priority ${i+1}…"
-            onkeydown="if(event.key==='Enter') addTop3(this)">
+          <div class="top3-slot-head">
+            <span class="top3-num">${i+1}</span>
+            <input class="flex-1 text-sm text-gray-400 bg-transparent border-none outline-none placeholder:text-gray-300"
+              placeholder="Add priority ${i+1}…"
+              onkeydown="if(event.key==='Enter') addTop3(this)">
+          </div>
         </div>`
       }
     }
@@ -2363,7 +2386,11 @@ function initSortable() {
         const typeMap = { 'master-main': 'main', 'master-smaller': 'smaller', 'master-bank': 'bank', 'top3-list': 'top3' }
         const newType = typeMap[evt.to.id] || type
         if (newType !== type || evt.from !== evt.to) {
-          await api('PUT', `/api/tasks/${taskId}`, { task_type: newType })
+          const res = await api('PUT', `/api/tasks/${taskId}`, { task_type: newType })
+          if (res?.demoted?.length) {
+            briefToast(`Top 3 is full — bumped ${res.demoted.length} down to Priorities`)
+            renderWeek()
+          }
         }
         const items = [...evt.to.querySelectorAll('[id^="task-"]')]
         items.forEach((el, i) => {
@@ -2478,9 +2505,11 @@ function toggleArchWeek(id) {
 async function restoreTask(id) {
   const el = document.getElementById(`arc-task-${id}`)
   if (el) el.style.opacity = '0.4'
-  await api('POST', `/api/tasks/${id}/restore`)
+  const res = await api('POST', `/api/tasks/${id}/restore`)
   if (el) el.remove()
-  briefToast('Task moved back to Master List')
+  briefToast(res?.demoted
+    ? 'Top 3 was full — moved back into Priorities instead'
+    : 'Moved back to Master List — no day assigned')
 }
 
 function briefToast(msg) {

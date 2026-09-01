@@ -119,6 +119,39 @@ def claude(prompt, max_tokens=1024):
 
 # ── TASKS ──────────────────────────────────────────────────────────────────
 
+TOP3_LIMIT = 3
+
+_ACTIVE = '(archived_week IS NULL OR archived_week = "")'
+
+
+def _active_top3(conn):
+    """Current top3 tasks in slot order."""
+    return conn.execute(
+        f'SELECT id, completed FROM tasks WHERE task_type = "top3" AND {_ACTIVE}'
+        ' ORDER BY sort_order, id'
+    ).fetchall()
+
+
+def _enforce_top3_cap(conn, arriving_id):
+    """Keep Top 3 at three. The task that just arrived stays; incumbents drop to
+    main priorities — completed ones first (they don't need to hold a slot),
+    then from the bottom of the list up. Returns the demoted ids."""
+    rows = [r for r in _active_top3(conn) if r['id'] != arriving_id]
+    overflow = len(rows) + 1 - TOP3_LIMIT
+    if overflow <= 0:
+        return []
+    ranked = [r['id'] for r in rows if r['completed']] + \
+             [r['id'] for r in reversed(rows) if not r['completed']]
+    demoted = ranked[:overflow]
+    conn.executemany('UPDATE tasks SET task_type = "main" WHERE id = ?',
+                     [(i,) for i in demoted])
+    return demoted
+
+
+def _top3_has_room(conn, tid):
+    return len([r for r in _active_top3(conn) if r['id'] != tid]) < TOP3_LIMIT
+
+
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     date = request.args.get('date')
@@ -158,6 +191,8 @@ def create_task():
          d.get('start_time', ''), d.get('duration_minutes') or None)
     )
     task = dict(conn.execute('SELECT * FROM tasks WHERE id=?', (cur.lastrowid,)).fetchone())
+    if task['task_type'] == 'top3':
+        task['demoted'] = _enforce_top3_cap(conn, task['id'])
     conn.commit()
     conn.close()
     return jsonify(task), 201
@@ -180,6 +215,10 @@ def update_task(tid):
     conn = get_db()
     conn.execute(f'UPDATE tasks SET {", ".join(fields)} WHERE id=?', vals)
     task = dict(conn.execute('SELECT * FROM tasks WHERE id=?', (tid,)).fetchone())
+    # Moving a task *into* Top 3 is deliberate, so it keeps its place and an
+    # incumbent gives way. Reordering within Top 3 must not demote anyone.
+    if d.get('task_type') == 'top3':
+        task['demoted'] = _enforce_top3_cap(conn, tid)
     conn.commit()
     conn.close()
     return jsonify(task)
@@ -871,10 +910,29 @@ def get_archive_weeks():
 @app.route('/api/tasks/<int:tid>/restore', methods=['POST'])
 def restore_task(tid):
     conn = get_db()
-    conn.execute('UPDATE tasks SET archived_week = NULL WHERE id = ?', (tid,))
+    # Bring it back unscheduled — a due date from the archived week is stale,
+    # so it would land as overdue instead of open for this week.
+    conn.execute(
+        "UPDATE tasks SET archived_week = NULL, scheduled_date = NULL WHERE id = ?",
+        (tid,)
+    )
+    # A 'top3' tag from an old week isn't a decision about this one. Restore it
+    # to Top 3 only if a slot is free; otherwise it lands in main priorities.
+    row = conn.execute('SELECT task_type FROM tasks WHERE id = ?', (tid,)).fetchone()
+    demoted = row and row['task_type'] == 'top3' and not _top3_has_room(conn, tid)
+    if demoted:
+        conn.execute('UPDATE tasks SET task_type = "main" WHERE id = ?', (tid,))
+    elif row and row['task_type'] == 'top3':
+        # land in the free slot at the end, not wherever a stale sort_order points
+        last = conn.execute(
+            f'SELECT MAX(sort_order) FROM tasks WHERE task_type = "top3" AND {_ACTIVE}'
+            ' AND id != ?', (tid,)
+        ).fetchone()[0]
+        conn.execute('UPDATE tasks SET sort_order = ? WHERE id = ?',
+                     ((last or 0) + 1, tid))
     conn.commit()
     conn.close()
-    return jsonify({'ok': True})
+    return jsonify({'ok': True, 'demoted': bool(demoted)})
 
 
 @app.route('/sw.js')
