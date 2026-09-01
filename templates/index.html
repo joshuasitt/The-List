@@ -800,7 +800,7 @@ function taskRow(task, showDate=false) {
       >${esc(task.title)}</span>
       ${timeStr}
       ${showDate?`<span class="text-xs text-amber-500">${fmtDisplayDate(task.scheduled_date)}</span>`:''}
-      <button title="Notes" onclick="toggleNotes(${task.id})" class="notes-icon p-1 ${hasNotes?'has-notes':''}">
+      <button title="Notes" onclick="toggleNotes(${task.id},this)" class="notes-icon p-1 ${hasNotes?'has-notes':''}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       </button>
       <div class="task-actions flex items-center gap-0.5">
@@ -849,7 +849,7 @@ function taskRowSmall(task, dimmed=false) {
         onblur="renameTask(${task.id},this.textContent.trim())"
         onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
       >${esc(task.title)}</span>
-      <button title="Notes" onclick="toggleNotes(${task.id})" class="notes-icon p-1 ${hasNotes?'has-notes':''}">
+      <button title="Notes" onclick="toggleNotes(${task.id},this)" class="notes-icon p-1 ${hasNotes?'has-notes':''}">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       </button>
       <div class="task-actions flex items-center gap-0.5">
@@ -906,8 +906,14 @@ async function renameTask(id, title) {
   await api('PUT', `/api/tasks/${id}`, {title})
 }
 
-function toggleNotes(id) {
-  const wrap = document.getElementById(`notes-${id}`)
+// Hidden sections stay in the DOM, so one task can be rendered in several
+// places at once (a top3 item scheduled for today sits in both Today and
+// Master). getElementById would grab whichever copy comes first in the
+// document — often a hidden one — so scope to the row that was clicked.
+function toggleNotes(id, el) {
+  const row = el && el.closest('.task-row, .top3-slot')
+  const wrap = row ? row.querySelector('.task-notes-wrap')
+                   : document.getElementById(`notes-${id}`)
   if (!wrap) return
   const isOpen = wrap.classList.toggle('open')
   if (isOpen) { const ta = wrap.querySelector('textarea'); if (ta) { ta.focus(); ta.selectionStart = ta.value.length } }
@@ -921,8 +927,10 @@ async function saveTaskNotes(id, notes) {
   const t = taskBefore(id)
   if (t && (t.notes||'') !== notes) pushUndo({taskId: id, fields: {notes: t.notes||''}})
   await api('PUT', `/api/tasks/${id}`, {notes})
-  const icon = document.querySelector(`#task-${id} .notes-icon`)
-  if (icon) icon.classList.toggle('has-notes', !!(notes && notes.trim()))
+  // update every copy of this row — querySelectorAll matches duplicate ids,
+  // unlike querySelector which would only reach the first
+  document.querySelectorAll(`[id="task-${id}"] .notes-icon`)
+    .forEach(icon => icon.classList.toggle('has-notes', !!(notes && notes.trim())))
 }
 
 // ── MULTI-SELECT ─────────────────────────────────────────────────────────
@@ -1459,7 +1467,7 @@ async function renderWeek() {
               onblur="renameTask(${t.id},this.textContent.trim())"
               onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
             >${esc(t.title)}</span>
-            <button title="Notes" onclick="toggleNotes(${t.id})" class="notes-icon p-1 ${t3HasNotes?'has-notes':''}">
+            <button title="Notes" onclick="toggleNotes(${t.id},this)" class="notes-icon p-1 ${t3HasNotes?'has-notes':''}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </button>
             ${t3badge}
@@ -1528,7 +1536,7 @@ async function renderWeek() {
           onblur="renameTask(${task.id},this.textContent.trim())"
           onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
         >${esc(task.title)}</span>
-        <button title="Notes" onclick="toggleNotes(${task.id})" class="notes-icon ${hasNotes?'has-notes':''}">
+        <button title="Notes" onclick="toggleNotes(${task.id},this)" class="notes-icon ${hasNotes?'has-notes':''}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </button>
         ${dayBadge(task)}
