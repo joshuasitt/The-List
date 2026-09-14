@@ -109,57 +109,6 @@
     .task-notes-input { width: 100%; border: none; outline: none; background: transparent; font-size: 12px; color: #6B7280; resize: none; line-height: 1.5; padding: 4px 0 2px 0; }
     .task-notes-input::placeholder { color: #D1D0CC; }
 
-    /* ── CALENDAR VIEW ── */
-    .cal-container { display: flex; flex: 1; overflow: hidden; }
-    .cal-unscheduled { width: 158px; min-width: 158px; border-right: 1px solid #F0EFEB; display: flex; flex-direction: column; overflow: hidden; background: #FAFAF8; }
-    .cal-unsch-list { flex: 1; overflow-y: auto; padding: 4px 6px; }
-    .cal-unsch-card { padding: 5px 8px; margin-bottom: 3px; background: white; border: 1px solid #F0EFEB; border-radius: 6px; font-size: 12px; color: #374151; cursor: grab; user-select: none; line-height: 1.35; }
-    .cal-unsch-card:hover { border-color: #D1D0CC; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-    .cal-unsch-card.dragging { opacity: 0.35; }
-    .cal-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-    .cal-day-headers { display: flex; border-bottom: 1px solid #F0EFEB; flex-shrink: 0; background: white; }
-    .cal-gutter { width: 44px; min-width: 44px; flex-shrink: 0; border-right: 1px solid #F0EFEB; }
-    .cal-day-header-cell { flex: 1; text-align: center; padding: 7px 2px; border-right: 1px solid #F0EFEB; }
-    .cal-day-header-cell:last-child { border-right: none; }
-    .cal-scroll-area { flex: 1; overflow-y: auto; }
-    .cal-grid-body { display: flex; }
-    .cal-hour-col { width: 44px; min-width: 44px; flex-shrink: 0; border-right: 1px solid #F0EFEB; }
-    .cal-hour-label { height: 44px; display: flex; align-items: flex-start; justify-content: flex-end; padding: 2px 7px 0 0; font-size: 10px; color: #C9C8C4; white-space: nowrap; }
-    .cal-days-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); min-width: 0; }
-    .cal-day-col { position: relative; border-right: 1px solid #F0EFEB; overflow: hidden; }
-    .cal-day-col:last-child { border-right: none; }
-    .cal-day-col.cal-today-col { background: #FFFDF7; }
-    .cal-day-col.cal-drop-active { background: #EFF6FF; }
-    .cal-hour-line { position: absolute; left: 0; right: 0; height: 1px; background: #F0EFEB; pointer-events: none; }
-    .cal-half-line { position: absolute; left: 0; right: 0; height: 1px; background: #F7F6F3; pointer-events: none; }
-    .cal-now-line { position: absolute; left: -1px; right: 0; height: 2px; background: #EF4444; z-index: 5; pointer-events: none; }
-    .cal-now-line::before { content: ''; position: absolute; left: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #EF4444; }
-    /* task blocks — GCal-style filled with white text */
-    .cal-task-block { position: absolute; left: 2px; right: 2px; border-radius: 4px; overflow: hidden; z-index: 2; min-height: 18px; cursor: grab; background: #1a73e8; outline: 2px solid white; outline-offset: -1px; }
-    .cal-task-block:hover { filter: brightness(1.08); z-index: 3; }
-    .cal-task-block.cal-type-top3 { background: #D97706; }
-    .cal-task-block.cal-type-smaller { background: #059669; }
-    .cal-task-block.cal-done { opacity: 0.45; }
-    .cal-task-block.cal-moving { opacity: 0.85; z-index: 20; box-shadow: 0 6px 18px rgba(0,0,0,0.2); cursor: grabbing; }
-    .cal-block-inner { padding: 3px 6px; overflow: hidden; height: calc(100% - 7px); }
-    .cal-block-title { font-size: 11.5px; font-weight: 500; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; }
-    .cal-block-time-label { font-size: 10px; color: rgba(255,255,255,0.85); line-height: 1.2; white-space: nowrap; overflow: hidden; }
-    .cal-block-del { position: absolute; top: 2px; right: 3px; font-size: 14px; line-height: 1; color: rgba(255,255,255,0.6); cursor: pointer; opacity: 0; z-index: 5; transition: opacity 0.1s; }
-    .cal-task-block:hover .cal-block-del { opacity: 1; }
-    .cal-block-del:hover { color: white; }
-    .cal-resize-handle { position: absolute; bottom: 0; left: 0; right: 0; height: 7px; cursor: ns-resize; z-index: 4; }
-    .cal-resize-handle:hover { background: rgba(0,0,0,0.12); border-radius: 0 0 4px 4px; }
-    /* gcal events — GCal light-blue style */
-    .cal-gcal-block { position: absolute; left: 2px; right: 2px; border-radius: 4px; overflow: hidden; z-index: 1; background: #e8f0fe; border-left: 3px solid #1a73e8; cursor: pointer; }
-    .cal-gcal-block:hover { background: #d2e3fc; }
-    .cal-gcal-inner { padding: 3px 5px; height: 100%; overflow: hidden; }
-    .cal-gcal-title { font-size: 11px; color: #1967d2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; font-weight: 500; }
-    .cal-gcal-time-label { font-size: 10px; color: #4285f4; line-height: 1.2; }
-    /* day header today circle */
-    .cal-hdr-today-num { width: 30px; height: 30px; border-radius: 50%; background: #1a73e8; display: flex; align-items: center; justify-content: center; margin: 2px auto 0; }
-    .cal-unscheduled.cal-panel-drop-active { background: #EFF6FF; }
-    #cal-gcal-popup { position: fixed; background: white; border: 1px solid #E5E7EB; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 12px 14px; z-index: 300; min-width: 210px; max-width: 290px; }
-    .cal-gcal-syncing { opacity: 0.7; }
     #sidebar.mobile-open { display: flex !important; position: fixed; top: 0; left: 0; height: 100vh; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
     @media (max-width: 768px) { .drag-handle { opacity: 1 !important; color: #D1D0CC; } }
     .sortable-ghost { opacity: 0.35; background: #E8E5DE !important; border-radius: 8px; }
@@ -189,6 +138,10 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       Personal
     </div>
+    <div class="nav-item" data-section="weekly" onclick="showSection('weekly')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 20 6"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+      Weekly Checklist
+    </div>
     <div class="nav-item" data-section="ideas" onclick="showSection('ideas')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       Ideas <span id="ideas-count" class="ml-auto text-xs text-gray-400"></span>
@@ -196,14 +149,6 @@
     <div class="nav-item" data-section="articles" onclick="showSection('articles')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       Articles
-    </div>
-    <div class="nav-item" data-section="meetings" onclick="showSection('meetings')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Meetings
-    </div>
-    <div class="nav-item" data-section="calendar" onclick="showSection('calendar')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="14" x2="12.01" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="16" y1="14" x2="16.01" y2="14" stroke-width="3" stroke-linecap="round"/></svg>
-      Calendar
     </div>
     <div class="nav-item" data-section="archive" onclick="showSection('archive')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -213,7 +158,6 @@
   <div class="mt-auto pt-4">
     <div class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mb-2" onclick="confirmArchiveWeek()">Archive this week →</div>
     <div id="api-status" class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600" onclick="showApiModal()">Set API key</div>
-    <div id="cal-status" class="px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1" onclick="showCalModal()">Connect Calendar</div>
   </div>
 </div>
 
@@ -420,6 +364,19 @@
     </div>
   </section>
 
+  <!-- WEEKLY CHECKLIST -->
+  <section id="section-weekly" class="hidden flex-1 overflow-y-auto px-8 py-6">
+    <div class="max-w-xl">
+      <div class="flex items-start justify-between mb-1">
+        <h1 class="text-xl font-semibold">Weekly Checklist</h1>
+        <button onclick="weeklyResetChecks()" class="text-xs text-gray-400 hover:text-gray-700 mt-1">Reset checkboxes</button>
+      </div>
+      <p class="text-sm text-gray-400 mb-5">Run through this when prepping the week.</p>
+      <div id="weekly-list" class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100"></div>
+      <button onclick="weeklyAddItem()" class="text-xs text-gray-400 hover:text-gray-600 px-1 py-2 mt-1">+ Add item</button>
+    </div>
+  </section>
+
   <!-- ARTICLES -->
   <section id="section-articles" class="hidden flex-1 overflow-y-auto px-8 py-6">
     <div class="max-w-2xl">
@@ -445,89 +402,6 @@
     </div>
   </section>
 
-  <!-- MEETINGS -->
-  <section id="section-meetings" class="hidden flex-1 overflow-hidden flex">
-    <div id="meeting-list-panel" class="w-64 min-w-64 border-r border-gray-200 flex flex-col overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <span class="font-medium text-sm">Meetings</span>
-        <button onclick="newMeeting()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700">+ New</button>
-      </div>
-      <div class="overflow-y-auto flex-1 p-3 space-y-1" id="meeting-list"></div>
-    </div>
-    <div id="meeting-detail-panel" class="flex-1 overflow-y-auto px-8 py-6">
-      <div id="meeting-placeholder" class="text-sm text-gray-400 mt-20 text-center">Select a meeting or create a new one</div>
-      <div id="meeting-detail" class="hidden max-w-2xl">
-        <div class="flex items-start justify-between mb-4">
-          <div class="flex-1">
-            <input id="m-title" class="w-full text-xl font-semibold bg-transparent border-none outline-none mb-1" placeholder="Meeting title" oninput="debounceSaveMeeting()">
-            <div class="flex gap-3">
-              <input id="m-date" type="date" class="text-sm text-gray-500 bg-transparent border-none outline-none" oninput="debounceSaveMeeting()">
-              <input id="m-attendees" class="flex-1 text-sm text-gray-500 bg-transparent border-none outline-none" placeholder="Attendees (emails, comma separated)" oninput="debounceSaveMeeting()">
-            </div>
-          </div>
-          <button onclick="deleteMeeting()" class="ml-4 text-xs text-gray-300 hover:text-red-400">Delete</button>
-        </div>
-        <div class="mb-5">
-          <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Notes</div>
-          <textarea id="m-notes" rows="8" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400 leading-relaxed" placeholder="Paste your notes..." oninput="debounceSaveMeeting()"></textarea>
-        </div>
-        <div class="mb-5">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Action Items</div>
-            <button onclick="extractActions()" id="extract-btn" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md flex items-center gap-1.5">Extract from notes</button>
-          </div>
-          <div id="m-actions" class="space-y-1.5"></div>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Follow-up Email</div>
-            <button onclick="generateEmail()" id="email-btn" class="text-xs bg-gray-900 text-white hover:bg-gray-700 px-3 py-1.5 rounded-md flex items-center gap-1.5">Draft email</button>
-          </div>
-          <div id="m-email-container" class="hidden">
-            <textarea id="m-email" rows="10" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-gray-400 font-mono leading-relaxed" oninput="debounceSaveMeeting()"></textarea>
-            <div class="flex gap-2 mt-2">
-              <button onclick="copyEmail()" class="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 bg-gray-100 rounded-md">Copy</button>
-              <button onclick="openEmailDraft()" class="text-xs text-gray-500 hover:text-gray-900 px-3 py-1.5 bg-gray-100 rounded-md">Open in Mail</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CALENDAR -->
-  <section id="section-calendar" class="hidden flex-1 overflow-hidden flex flex-col">
-    <div class="px-4 py-2.5 border-b border-gray-100 flex items-center gap-1 flex-shrink-0">
-      <button onclick="calPrevWeek()" class="text-gray-300 hover:text-gray-600 text-xl leading-none px-1">‹</button>
-      <span id="cal-week-label" class="text-sm font-medium text-gray-700 px-1"></span>
-      <button onclick="calNextWeek()" class="text-gray-300 hover:text-gray-600 text-xl leading-none px-1">›</button>
-      <button onclick="calThisWeek()" id="cal-today-btn" class="hidden text-xs text-amber-500 hover:text-amber-700 ml-2">This week</button>
-    </div>
-    <div class="cal-container">
-      <div class="cal-unscheduled" id="cal-unscheduled-panel"
-        ondragover="calPanelDragOver(event)"
-        ondragleave="calPanelDragLeave(event)"
-        ondrop="calPanelDrop(event)">
-        <div class="px-3 pt-3 pb-1 flex-shrink-0">
-          <div class="section-label">Unscheduled</div>
-          <div class="text-xs text-gray-400 -mt-1 mb-2">Drag to schedule →</div>
-        </div>
-        <div class="cal-unsch-list" id="cal-unsch-list"></div>
-      </div>
-      <div class="cal-main">
-        <div class="cal-day-headers" id="cal-day-headers">
-          <div class="cal-gutter"></div>
-        </div>
-        <div class="cal-scroll-area" id="cal-scroll-area">
-          <div class="cal-grid-body">
-            <div class="cal-hour-col" id="cal-hour-col"></div>
-            <div class="cal-days-grid" id="cal-days-grid"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- ARCHIVE -->
   <section id="section-archive" class="hidden flex-1 overflow-auto px-8 py-6">
     <div class="max-w-xl">
@@ -538,9 +412,6 @@
   </section>
 
 </div>
-
-<!-- GCAL EVENT POPUP -->
-<div id="cal-gcal-popup" class="hidden"></div>
 
 <!-- INLINE DAY PICKER -->
 <div id="inline-day-picker" class="hidden" onmouseleave="closeInlineDayPicker()"></div>
@@ -568,26 +439,6 @@
 <div id="undo-toast" class="hidden">
   <span id="undo-msg">Task deleted</span>
   <button onclick="undoDelete()" style="color:#FCD34D;font-weight:600;background:none;border:none;cursor:pointer;padding:0">Undo</button>
-</div>
-
-<!-- CALENDAR MODAL -->
-<div id="cal-modal" class="hidden modal-bg" onclick="closeCalModal(event)">
-  <div class="modal p-6" onclick="event.stopPropagation()">
-    <h2 class="font-semibold mb-1">Google Calendar</h2>
-    <div id="cal-connected-view" class="hidden">
-      <p class="text-sm text-green-600 mb-4">✓ Connected to Google Calendar</p>
-      <button onclick="disconnectCal()" class="text-xs text-red-400 hover:text-red-600">Disconnect</button>
-    </div>
-    <div id="cal-setup-view">
-      <p class="text-sm text-gray-500 mb-4">Enter your Google OAuth credentials. <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-500 underline">Get them here</a> — create a project, enable Calendar API, add OAuth 2.0 credentials (Web App), set redirect URI to <code class="bg-gray-100 px-1 rounded text-xs">http://localhost:8000/auth/google/callback</code></p>
-      <input id="cal-client-id" type="text" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none mb-3 font-mono" placeholder="Client ID">
-      <input id="cal-client-secret" type="password" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none mb-4 font-mono" placeholder="Client Secret">
-      <div class="flex gap-2 justify-end">
-        <button onclick="closeCalModal()" class="text-sm text-gray-500 px-4 py-2">Cancel</button>
-        <button onclick="saveCalCreds()" class="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg">Save &amp; Connect</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- API KEY MODAL -->
@@ -624,7 +475,6 @@ const state = {
   viewDay: formatDate(new Date()),
   weekStart: getMonday(new Date()),
   reminders: [],
-  selectedMeetingId: null,
   articleTab: 'url',
   lastSummary: '',
   rescheduleTaskId: null,
@@ -699,7 +549,7 @@ function showSection(name) {
   state.section = name
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.section===name))
   document.querySelectorAll('[id^="section-"]').forEach(el => el.classList.toggle('hidden', el.id!==`section-${name}`))
-  const titles = {today:'Today',week:'Master',ideas:'Ideas',articles:'Articles',meetings:'Meetings',calendar:'Calendar',archive:'Archive',personal:'Personal'}
+  const titles = {today:'Today',week:'Master',ideas:'Ideas',articles:'Articles',archive:'Archive',personal:'Personal',weekly:'Weekly Checklist'}
   const t = document.getElementById('mobile-section-title')
   if (t) t.textContent = titles[name] || name
   closeMobileNav()
@@ -707,8 +557,7 @@ function showSection(name) {
   if (name==='week') renderWeek()
   if (name==='ideas') renderIdeas()
   if (name==='articles') renderArticles()
-  if (name==='meetings') renderMeetings()
-  if (name==='calendar') renderCalendar()
+  if (name==='weekly') renderWeekly()
   if (name==='archive') renderArchive()
   if (name==='personal') renderPersonal()
 }
@@ -804,9 +653,6 @@ function taskRow(task, showDate=false) {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       </button>
       <div class="task-actions flex items-center gap-0.5">
-        <button title="Add to Google Calendar" onclick="addToCalendar(${task.id})" class="text-gray-300 hover:text-blue-400 p-1">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="3" stroke-linecap="round"/><line x1="16" y1="14" x2="16" y2="14" stroke-width="3" stroke-linecap="round"/></svg>
-        </button>
         <button title="Push to tomorrow" onclick="pushTomorrow(${task.id})" class="text-gray-300 hover:text-gray-600 p-1">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
@@ -983,7 +829,6 @@ async function cmdUndo() {
   await Promise.all(changes.map(c => api('PUT', `/api/tasks/${c.taskId}`, c.fields)))
   if (state.section==='today') renderToday()
   if (state.section==='week') renderWeek()
-  if (state.section==='calendar') renderCalendar()
 }
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
@@ -1214,7 +1059,6 @@ async function _flushDelete() {
   await api('DELETE', `/api/tasks/${id}`)
   if (state.section==='today') renderToday()
   if (state.section==='week') renderWeek()
-  if (state.section==='calendar') renderCalendar()
 }
 
 async function undoDelete() {
@@ -1223,83 +1067,6 @@ async function undoDelete() {
   document.getElementById('undo-toast').classList.add('hidden')
   if (state.section==='today') renderToday()
   if (state.section==='week') renderWeek()
-  if (state.section==='calendar') renderCalendar()
-}
-
-async function addToCalendar(id) {
-  const task = state._tasksCache.find(t => t.id === id)
-  if (!task) return
-  const date = task.scheduled_date || state.viewDay
-  if (state._calConnected) {
-    const btn = document.querySelector(`#task-${id} [title="Add to Google Calendar"]`)
-    if (btn) btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span>'
-    const result = await api('POST', '/api/calendar/create-event', {
-      title: task.title, date, notes: task.notes||'', time_estimate: task.time_estimate||''
-    })
-    if (result.ok) {
-      if (btn) btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
-      if (result.event_link) setTimeout(() => window.open(result.event_link, '_blank'), 300)
-    } else {
-      if (btn) btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
-      alert(result.error || 'Calendar error')
-    }
-  } else {
-    // Fallback: open Google Calendar create URL
-    const d = date.replace(/-/g,'')
-    const nd = formatDate(addDays(new Date(date+'T12:00:00'), 1)).replace(/-/g,'')
-    window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${d}/${nd}&details=${encodeURIComponent(task.notes||'')}`, '_blank')
-  }
-}
-
-// ── CALENDAR SETUP ────────────────────────────────────────────────────────
-
-async function checkCalStatus() {
-  const r = await api('GET', '/api/calendar/status')
-  state._calConnected = r.connected
-  const el = document.getElementById('cal-status')
-  if (r.connected) {
-    el.textContent = 'Calendar ✓'
-    el.className = 'px-2 text-xs text-green-500 cursor-pointer mt-1'
-  } else {
-    el.textContent = 'Connect Calendar'
-    el.className = 'px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1'
-  }
-  // Handle redirect back after OAuth
-  const params = new URLSearchParams(window.location.search)
-  if (params.get('cal_connected')) {
-    state._calConnected = true
-    el.textContent = 'Calendar ✓'
-    el.className = 'px-2 text-xs text-green-500 cursor-pointer mt-1'
-    history.replaceState({}, '', '/')
-  }
-}
-
-function showCalModal() {
-  const connected = state._calConnected
-  document.getElementById('cal-connected-view').classList.toggle('hidden', !connected)
-  document.getElementById('cal-setup-view').classList.toggle('hidden', connected)
-  document.getElementById('cal-modal').classList.remove('hidden')
-}
-
-function closeCalModal(evt) {
-  if (!evt || evt.target === document.getElementById('cal-modal'))
-    document.getElementById('cal-modal').classList.add('hidden')
-}
-
-async function saveCalCreds() {
-  const client_id = document.getElementById('cal-client-id').value.trim()
-  const client_secret = document.getElementById('cal-client-secret').value.trim()
-  if (!client_id || !client_secret) return
-  const r = await api('POST', '/api/set-gcal-credentials', {client_id, client_secret})
-  if (r.ok) window.location.href = '/auth/google'
-}
-
-async function disconnectCal() {
-  await fetch('/api/calendar/disconnect', {method:'POST'})
-  state._calConnected = false
-  document.getElementById('cal-status').textContent = 'Connect Calendar'
-  document.getElementById('cal-status').className = 'px-2 text-xs text-gray-400 cursor-pointer hover:text-gray-600 mt-1'
-  closeCalModal()
 }
 
 async function pushTomorrow(id) {
@@ -1773,6 +1540,65 @@ function persAddRule() {
   _persSave()
 }
 
+// ── WEEKLY CHECKLIST ──────────────────────────────────────────────────────
+
+let _weeklyData = null
+const _weeklySave = debounce(() => {
+  api('PUT', '/api/settings/weekly_checklist', { value: JSON.stringify(_weeklyData) })
+}, 600)
+
+async function renderWeekly(focusIdx) {
+  if (!_weeklyData) {
+    const res = await api('GET', '/api/settings/weekly_checklist')
+    try { _weeklyData = res.value ? JSON.parse(res.value) : null } catch { _weeklyData = null }
+    if (!_weeklyData || !Array.isArray(_weeklyData.items)) _weeklyData = { items: [{ text: '', done: false }] }
+  }
+  const el = document.getElementById('weekly-list')
+  el.innerHTML = _weeklyData.items.map((it, i) => `
+    <div class="group flex items-center gap-3 px-3 py-2.5">
+      <span class="text-xs text-gray-300 w-5 flex-shrink-0 text-right tabular-nums">${i+1}.</span>
+      <input type="checkbox" ${it.done?'checked':''} onchange="weeklyToggle(${i},this.checked)"
+        class="w-4 h-4 flex-shrink-0 accent-gray-800 cursor-pointer">
+      <input data-wk="${i}" value="${esc(it.text||'')}" placeholder="Add a step..."
+        class="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-300 ${it.done?'line-through text-gray-400':'text-gray-700'}"
+        oninput="weeklyText(${i},this.value)" onkeydown="weeklyKey(event,${i})">
+      <button onclick="weeklyDelete(${i})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('')
+  if (focusIdx != null) {
+    const inp = el.querySelector(`[data-wk="${focusIdx}"]`)
+    if (inp) inp.focus()
+  }
+}
+
+function weeklyText(i, v) { _weeklyData.items[i].text = v; _weeklySave() }
+function weeklyToggle(i, checked) { _weeklyData.items[i].done = checked; _weeklySave(); renderWeekly() }
+function weeklyDelete(i) {
+  _weeklyData.items.splice(i, 1)
+  if (!_weeklyData.items.length) _weeklyData.items.push({ text: '', done: false })
+  _weeklySave(); renderWeekly()
+}
+function weeklyAddItem() {
+  _weeklyData.items.push({ text: '', done: false })
+  _weeklySave(); renderWeekly(_weeklyData.items.length - 1)
+}
+function weeklyKey(e, i) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    _weeklyData.items.splice(i + 1, 0, { text: '', done: false })
+    _weeklySave(); renderWeekly(i + 1)
+  } else if (e.key === 'Backspace' && !e.target.value && _weeklyData.items.length > 1) {
+    e.preventDefault()
+    _weeklyData.items.splice(i, 1)
+    _weeklySave(); renderWeekly(Math.max(0, i - 1))
+  }
+}
+function weeklyResetChecks() {
+  _weeklyData.items.forEach(it => it.done = false)
+  _weeklySave(); renderWeekly()
+}
+
 // ── IDEAS ─────────────────────────────────────────────────────────────────
 
 async function renderIdeas() {
@@ -1855,491 +1681,6 @@ async function saveArticleSummaryToIdea() {
 }
 
 async function deleteArticle(id) { await api('DELETE',`/api/articles/${id}`); renderArticles() }
-
-// ── MEETINGS ──────────────────────────────────────────────────────────────
-
-async function renderMeetings() {
-  const meetings = await api('GET', '/api/meetings')
-  state.meetings = meetings
-  document.getElementById('meeting-list').innerHTML = meetings.map(m=>`
-    <div onclick="selectMeeting(${m.id})"
-      class="px-3 py-2.5 rounded-lg cursor-pointer text-sm ${m.id===state.selectedMeetingId?'bg-gray-100 font-medium':'hover:bg-gray-50'}">
-      <div class="text-gray-800 truncate">${esc(m.title)}</div>
-      ${m.meeting_date?`<div class="text-xs text-gray-400 mt-0.5">${fmtDisplayDate(m.meeting_date)}</div>`:''}
-    </div>`).join('')
-  if (state.selectedMeetingId) {
-    const m = meetings.find(m=>m.id===state.selectedMeetingId)
-    if (m) renderMeetingDetail(m)
-  }
-}
-
-function renderMeetingDetail(m) {
-  document.getElementById('meeting-placeholder').classList.add('hidden')
-  document.getElementById('meeting-detail').classList.remove('hidden')
-  document.getElementById('m-title').value = m.title||''
-  document.getElementById('m-date').value = m.meeting_date||''
-  const attendees = typeof m.attendees==='string' ? JSON.parse(m.attendees||'[]') : (m.attendees||[])
-  document.getElementById('m-attendees').value = attendees.join(', ')
-  document.getElementById('m-notes').value = m.notes||''
-  const actions = typeof m.action_items==='string' ? JSON.parse(m.action_items||'[]') : (m.action_items||[])
-  renderActionItems(actions)
-  const draft = m.email_draft||''
-  document.getElementById('m-email').value = draft
-  document.getElementById('m-email-container').classList.toggle('hidden', !draft)
-}
-
-function renderActionItems(actions) {
-  const el = document.getElementById('m-actions')
-  if (!actions.length) { el.innerHTML='<div class="text-sm text-gray-400">None yet.</div>'; return }
-  el.innerHTML = actions.map(a=>`
-    <div class="flex items-start gap-2 text-sm">
-      <div class="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1.5 shrink-0"></div>
-      <span class="text-gray-700">${esc(a)}</span>
-    </div>`).join('')
-}
-
-async function newMeeting() {
-  const m = await api('POST', '/api/meetings', {title:'New meeting', meeting_date: state.today})
-  state.selectedMeetingId = m.id
-  renderMeetings()
-  setTimeout(()=>{ const t=document.getElementById('m-title'); t.focus(); t.select() }, 100)
-}
-
-async function selectMeeting(id) { state.selectedMeetingId = id; renderMeetings() }
-
-const debounceSaveMeeting = debounce(async () => {
-  if (!state.selectedMeetingId) return
-  const attendeesRaw = document.getElementById('m-attendees').value
-  await api('PUT', `/api/meetings/${state.selectedMeetingId}`, {
-    title: document.getElementById('m-title').value,
-    meeting_date: document.getElementById('m-date').value,
-    attendees: attendeesRaw.split(',').map(s=>s.trim()).filter(Boolean),
-    notes: document.getElementById('m-notes').value,
-    email_draft: document.getElementById('m-email').value,
-  })
-  renderMeetings()
-}, 800)
-
-async function extractActions() {
-  const btn = document.getElementById('extract-btn')
-  btn.innerHTML=`<span class="spinner"></span> Extracting...`; btn.disabled=true
-  const attendees = document.getElementById('m-attendees').value.split(',').map(s=>s.trim()).filter(Boolean)
-  await api('PUT',`/api/meetings/${state.selectedMeetingId}`,{notes:document.getElementById('m-notes').value,attendees})
-  const result = await api('POST',`/api/meetings/${state.selectedMeetingId}/extract-actions`)
-  btn.innerHTML='Extract from notes'; btn.disabled=false
-  if (result.error) { alert(result.error); return }
-  renderActionItems(result.action_items)
-}
-
-async function generateEmail() {
-  const btn = document.getElementById('email-btn')
-  btn.innerHTML=`<span class="spinner"></span> Drafting...`; btn.disabled=true
-  const attendees = document.getElementById('m-attendees').value.split(',').map(s=>s.trim()).filter(Boolean)
-  await api('PUT',`/api/meetings/${state.selectedMeetingId}`,{
-    title:document.getElementById('m-title').value,
-    meeting_date:document.getElementById('m-date').value,
-    attendees, notes:document.getElementById('m-notes').value
-  })
-  const result = await api('POST',`/api/meetings/${state.selectedMeetingId}/generate-email`)
-  btn.innerHTML='Draft email'; btn.disabled=false
-  if (result.error) { alert(result.error); return }
-  document.getElementById('m-email').value = result.email_draft
-  document.getElementById('m-email-container').classList.remove('hidden')
-}
-
-async function deleteMeeting() {
-  if (!state.selectedMeetingId||!confirm('Delete this meeting?')) return
-  await api('DELETE',`/api/meetings/${state.selectedMeetingId}`)
-  state.selectedMeetingId=null
-  document.getElementById('meeting-detail').classList.add('hidden')
-  document.getElementById('meeting-placeholder').classList.remove('hidden')
-  renderMeetings()
-}
-
-function copyEmail() {
-  navigator.clipboard.writeText(document.getElementById('m-email').value).then(()=>{
-    const btn=event.target.closest('button'); const orig=btn.textContent
-    btn.textContent='Copied!'; setTimeout(()=>btn.textContent=orig,1500)
-  })
-}
-
-function openEmailDraft() {
-  const text = document.getElementById('m-email').value
-  const to = document.getElementById('m-attendees').value.split(',').map(s=>s.trim()).filter(Boolean).join(',')
-  const subj = document.getElementById('m-title').value
-  window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent('Re: '+subj)}&body=${encodeURIComponent(text)}`
-}
-
-// ── CALENDAR VIEW ─────────────────────────────────────────────────────────
-
-const CAL_START_HOUR = 7
-const CAL_END_HOUR = 21
-const CAL_PX_PER_HOUR = 44
-
-function getSunday(d) {
-  const date = new Date(d)
-  date.setDate(date.getDate() - date.getDay())
-  date.setHours(0,0,0,0)
-  return date
-}
-function timeToMin(t) {
-  if (!t) return 9 * 60
-  const [h, m] = t.split(':').map(Number)
-  return (h||0) * 60 + (m||0)
-}
-function minToTime(m) {
-  const h = Math.floor(m/60), mn = m%60
-  return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`
-}
-function minToPx(m) { return (m - CAL_START_HOUR*60) * CAL_PX_PER_HOUR / 60 }
-function pxToMin(px) { return px / CAL_PX_PER_HOUR * 60 + CAL_START_HOUR*60 }
-function fmtHour(h) {
-  if (h===12) return '12pm'; if (h===0) return '12am'
-  return h>12 ? `${h-12}pm` : `${h}am`
-}
-function fmtBlockTime(t, dur) {
-  if (!t) return ''
-  const [h, m] = t.split(':').map(Number)
-  const ampm = h>=12?'pm':'am', h12 = h%12||12
-  const s = m ? `${h12}:${String(m).padStart(2,'0')}${ampm}` : `${h12}${ampm}`
-  if (!dur) return s
-  const em = h*60+m+dur, eh = Math.floor(em/60)%24, emm = em%60
-  const eampm = eh>=12?'pm':'am', eh12 = eh%12||12
-  const e_ = emm ? `${eh12}:${String(emm).padStart(2,'0')}${eampm}` : `${eh12}${eampm}`
-  return `${s} – ${e_}`
-}
-
-let _calWeekStart = getSunday(new Date())
-let _calMoving = null
-let _calResizing = null
-
-async function renderCalendar() {
-  const days = Array.from({length:7},(_,i)=>formatDate(addDays(_calWeekStart,i)))
-  const s = new Date(days[0]+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})
-  const e = new Date(days[6]+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})
-  document.getElementById('cal-week-label').textContent = `${s} – ${e}`
-  document.getElementById('cal-today-btn')?.classList.toggle('hidden', days.includes(state.today))
-
-  const [tasks, gcalResp] = await Promise.all([
-    api('GET','/api/tasks'),
-    api('GET',`/api/calendar/gcal-events?week_start=${days[0]}`)
-  ])
-  const allTasks = filterPending(tasks)
-  state._tasksCache = allTasks
-  const gcalEvents = (gcalResp && gcalResp.events) || []
-  window._calGcalCache = gcalEvents
-
-  // Unscheduled panel — tasks with no start_time (need time-blocking)
-  const unsch = allTasks.filter(t => !t.start_time && t.task_type !== 'bank' && !t.completed)
-  // Group: today first, then by date, then undated
-  const dayOrder = d => d || 'zzz'
-  unsch.sort((a,b) => {
-    const da = dayOrder(a.scheduled_date), db = dayOrder(b.scheduled_date)
-    if (da===db) return 0; return da<db?-1:1
-  })
-  let lastDay = null
-  const unschHtml = unsch.map(t => {
-    let header = ''
-    const sd = t.scheduled_date
-    if (sd !== lastDay) {
-      lastDay = sd
-      const label = !sd ? 'No date' : sd===state.today ? 'Today' : new Date(sd+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
-      header = `<div class="text-xs font-semibold text-gray-400 px-2 pt-3 pb-1 uppercase tracking-wide">${label}</div>`
-    }
-    return header + `<div class="cal-unsch-card" id="cal-unsch-${t.id}"
-      draggable="true"
-      ondragstart="calUnschDragStart(event,${t.id})"
-      ondragend="calUnschDragEnd(${t.id})">${esc(t.title)}</div>`
-  }).join('')
-  document.getElementById('cal-unsch-list').innerHTML = unschHtml ||
-    '<div class="text-xs text-gray-400 px-2 py-3">All time-blocked!</div>'
-
-  // Day headers
-  const hdrs = document.getElementById('cal-day-headers')
-  hdrs.innerHTML = '<div class="cal-gutter"></div>' + days.map(day=>{
-    const d=new Date(day+'T12:00:00'), isToday=day===state.today
-    const dayName = d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase()
-    const num = isToday
-      ? `<div class="cal-hdr-today-num"><span style="color:white;font-size:16px;font-weight:500">${d.getDate()}</span></div>`
-      : `<div style="font-size:22px;font-weight:400;color:#3c4043;line-height:1;margin-top:2px">${d.getDate()}</div>`
-    return `<div class="cal-day-header-cell" style="padding:6px 2px 8px">
-      <div style="font-size:10px;font-weight:500;color:${isToday?'#1a73e8':'#70757a'};letter-spacing:0.5px">${dayName}</div>
-      ${num}
-    </div>`
-  }).join('')
-
-  // Hour labels
-  document.getElementById('cal-hour-col').innerHTML =
-    Array.from({length:CAL_END_HOUR-CAL_START_HOUR},(_,i)=>
-      `<div class="cal-hour-label">${fmtHour(CAL_START_HOUR+i)}</div>`).join('')
-
-  // Day columns
-  const totalPx = (CAL_END_HOUR-CAL_START_HOUR)*CAL_PX_PER_HOUR
-  document.getElementById('cal-days-grid').innerHTML = days.map(day=>{
-    const dayTasks = allTasks.filter(t=>t.scheduled_date===day && t.task_type!=='bank' && t.start_time)
-    const dayGcal = gcalEvents.filter(ev=>ev.day===day)
-    const isToday = day===state.today
-
-    const hourLines = Array.from({length:CAL_END_HOUR-CAL_START_HOUR},(_,i)=>`
-      <div class="cal-hour-line" style="top:${i*CAL_PX_PER_HOUR}px"></div>
-      <div class="cal-half-line" style="top:${i*CAL_PX_PER_HOUR+CAL_PX_PER_HOUR/2}px"></div>`).join('')
-
-    const taskBlocks = dayTasks.map(t=>{
-      const top = minToPx(timeToMin(t.start_time))
-      const dur = t.duration_minutes || 60
-      const h = Math.max(20, dur*CAL_PX_PER_HOUR/60)
-      const typeClass = t.task_type==='top3'?'cal-type-top3':t.task_type==='smaller'?'cal-type-smaller':''
-      const timeLabel = h>=30 ? `<div class="cal-block-time-label">${fmtBlockTime(t.start_time,dur)}</div>` : ''
-      return `<div class="cal-task-block ${typeClass} ${t.completed?'cal-done':''}" id="cal-block-${t.id}"
-        style="top:${top}px;height:${h}px"
-        onmousedown="calBlockMouseDown(event,${t.id},'${day}')">
-        <div class="cal-block-inner">
-          <div class="cal-block-title">${esc(t.title)}</div>${timeLabel}
-        </div>
-        <div class="cal-block-del" onmousedown="event.stopPropagation()" onclick="deleteTask(${t.id})">×</div>
-        <div class="cal-resize-handle" onmousedown="calResizeMouseDown(event,${t.id})"></div>
-      </div>`
-    }).join('')
-
-    const gcalBlocks = dayGcal.map((ev, gi)=>{
-      const idx = gcalEvents.indexOf(ev)
-      const top = minToPx(timeToMin(ev.start_time))
-      const dur = ev.duration_minutes||60
-      const h = Math.max(20, dur*CAL_PX_PER_HOUR/60)
-      const timeLabel = h>=30 ? `<div class="cal-gcal-time-label">${fmtBlockTime(ev.start_time,dur)}</div>` : ''
-      return `<div class="cal-gcal-block" style="top:${top}px;height:${h}px"
-        onclick="showGcalPopup(event,${idx})">
-        <div class="cal-gcal-inner">
-          <div class="cal-gcal-title">${esc(ev.title)}</div>${timeLabel}
-        </div>
-      </div>`
-    }).join('')
-
-    return `<div class="cal-day-col ${isToday?'cal-today-col':''}" id="cal-col-${day}"
-      data-day="${day}" style="height:${totalPx}px"
-      ondragover="calColDragOver(event,'${day}')"
-      ondragleave="calColDragLeave(event,'${day}')"
-      ondrop="calColDrop(event,'${day}')">${hourLines}${gcalBlocks}${taskBlocks}</div>`
-  }).join('')
-
-  // Scroll to 7am (top) — full day fits without scrolling at 44px/hr
-  const scr = document.getElementById('cal-scroll-area')
-  if (scr && !scr.dataset.init) {
-    scr.scrollTop = 0
-    scr.dataset.init = '1'
-  }
-
-  // "Now" line
-  if (days.includes(state.today)) {
-    const now = new Date(), nowMin = now.getHours()*60+now.getMinutes()
-    if (nowMin>=CAL_START_HOUR*60 && nowMin<CAL_END_HOUR*60) {
-      const col = document.getElementById(`cal-col-${state.today}`)
-      if (col) {
-        const line = document.createElement('div')
-        line.className = 'cal-now-line'
-        line.style.top = `${minToPx(nowMin)}px`
-        col.appendChild(line)
-      }
-    }
-  }
-}
-
-function calPrevWeek() { _calWeekStart = addDays(_calWeekStart,-7); renderCalendar() }
-function calNextWeek() { _calWeekStart = addDays(_calWeekStart,7); renderCalendar() }
-function calThisWeek() { _calWeekStart = getSunday(new Date()); renderCalendar() }
-
-// Drag from unscheduled panel
-let _calUnschDragId = null
-function calUnschDragStart(e, id) {
-  _calUnschDragId = id
-  e.dataTransfer.setData('text/plain', String(id))
-  e.dataTransfer.effectAllowed = 'move'
-  setTimeout(()=>document.getElementById(`cal-unsch-${id}`)?.classList.add('dragging'),0)
-}
-function calUnschDragEnd(id) {
-  document.getElementById(`cal-unsch-${id}`)?.classList.remove('dragging')
-  _calUnschDragId = null
-}
-function calColDragOver(e, day) {
-  e.preventDefault()
-  document.getElementById(`cal-col-${day}`)?.classList.add('cal-drop-active')
-}
-function calColDragLeave(e, day) {
-  if (!e.currentTarget.contains(e.relatedTarget))
-    document.getElementById(`cal-col-${day}`)?.classList.remove('cal-drop-active')
-}
-async function calColDrop(e, day) {
-  e.preventDefault()
-  document.getElementById(`cal-col-${day}`)?.classList.remove('cal-drop-active')
-  const id = parseInt(e.dataTransfer.getData('text/plain'))
-  if (!id) return
-  const col = document.getElementById(`cal-col-${day}`)
-  const rect = col.getBoundingClientRect()
-  const rawMin = pxToMin(e.clientY - rect.top)
-  const clampedMin = Math.max(CAL_START_HOUR*60, Math.min((CAL_END_HOUR-1)*60, Math.round(rawMin/15)*15))
-  const t = taskBefore(id)
-  if (t) pushUndo({taskId:id, fields:{scheduled_date:t.scheduled_date||'',start_time:t.start_time||''}})
-  await api('PUT',`/api/tasks/${id}`,{scheduled_date:day, start_time:minToTime(clampedMin), duration_minutes:t?.duration_minutes||60})
-  calPushToGcal(id)
-  renderCalendar()
-}
-
-// Move existing block
-function calBlockMouseDown(e, id, day) {
-  if (e.target.classList.contains('cal-resize-handle')) return
-  e.preventDefault()
-  const task = state._tasksCache.find(t=>t.id===id)
-  if (!task) return
-  const block = document.getElementById(`cal-block-${id}`)
-  if (!block) return
-  const colRects = {}
-  document.querySelectorAll('.cal-day-col').forEach(c=>{ colRects[c.dataset.day]=c.getBoundingClientRect() })
-  _calMoving = {
-    id, day, origStartMin:timeToMin(task.start_time), duration:task.duration_minutes||60,
-    origY:e.clientY, block, colRects, newDay:day, newMin:timeToMin(task.start_time), currentDay:day
-  }
-  block.classList.add('cal-moving')
-  document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', _calBlockMove, {passive:false})
-  document.addEventListener('mouseup', _calBlockUp)
-}
-function _calBlockMove(e) {
-  if (!_calMoving) return
-  e.preventDefault()
-  const {block, origStartMin, duration, origY, colRects} = _calMoving
-  let hovDay = _calMoving.day
-  for (const [d,rect] of Object.entries(colRects)) {
-    if (e.clientX>=rect.left && e.clientX<rect.right) { hovDay=d; break }
-  }
-  _calMoving.newDay = hovDay
-  const deltaMin = Math.round((e.clientY-origY)/CAL_PX_PER_HOUR*60/15)*15
-  const newMin = Math.max(CAL_START_HOUR*60, Math.min(CAL_END_HOUR*60-duration, origStartMin+deltaMin))
-  _calMoving.newMin = newMin
-  block.style.top = `${minToPx(newMin)}px`
-  if (hovDay !== _calMoving.currentDay) {
-    const newCol = document.getElementById(`cal-col-${hovDay}`)
-    if (newCol) { newCol.appendChild(block); _calMoving.currentDay = hovDay }
-  }
-}
-async function _calBlockUp(e) {
-  if (!_calMoving) return
-  document.removeEventListener('mousemove', _calBlockMove)
-  document.removeEventListener('mouseup', _calBlockUp)
-  document.body.style.userSelect = ''
-  document.getElementById('cal-unscheduled-panel')?.classList.remove('cal-panel-drop-active')
-  const {id, day, newDay, origStartMin, newMin, block} = _calMoving
-  block.classList.remove('cal-moving')
-  const task = state._tasksCache.find(t=>t.id===id)
-  if (task) pushUndo({taskId:id, fields:{scheduled_date:task.scheduled_date||'',start_time:task.start_time||''}})
-  const droppedOnPanel = document.elementFromPoint(e.clientX, e.clientY)?.closest('#cal-unscheduled-panel')
-  if (droppedOnPanel) {
-    await api('PUT',`/api/tasks/${id}`,{start_time:'', duration_minutes:60})
-    calDeleteFromGcal(id)
-  } else {
-    await api('PUT',`/api/tasks/${id}`,{scheduled_date:newDay||day, start_time:minToTime(newMin!==undefined?newMin:origStartMin)})
-    calPushToGcal(id)
-  }
-  _calMoving = null
-  renderCalendar()
-}
-
-// Resize
-function calResizeMouseDown(e, id) {
-  e.stopPropagation(); e.preventDefault()
-  const task = state._tasksCache.find(t=>t.id===id)
-  if (!task) return
-  _calResizing = {
-    id, origDuration:task.duration_minutes||60, origY:e.clientY,
-    block:document.getElementById(`cal-block-${id}`), newDuration:task.duration_minutes||60
-  }
-  document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', _calResizeMove, {passive:false})
-  document.addEventListener('mouseup', _calResizeUp)
-}
-function _calResizeMove(e) {
-  if (!_calResizing) return
-  e.preventDefault()
-  const {block, origDuration, origY} = _calResizing
-  const deltaMin = Math.round((e.clientY-origY)/CAL_PX_PER_HOUR*60/15)*15
-  const newDur = Math.max(15, origDuration+deltaMin)
-  _calResizing.newDuration = newDur
-  block.style.height = `${Math.max(20, newDur*CAL_PX_PER_HOUR/60)}px`
-  const task = state._tasksCache.find(t=>t.id===_calResizing.id)
-  const tl = block.querySelector('.cal-block-time-label')
-  if (tl && task) tl.textContent = fmtBlockTime(task.start_time, newDur)
-}
-async function _calResizeUp() {
-  if (!_calResizing) return
-  document.removeEventListener('mousemove', _calResizeMove)
-  document.removeEventListener('mouseup', _calResizeUp)
-  document.body.style.userSelect = ''
-  const {id, origDuration, newDuration} = _calResizing
-  const task = state._tasksCache.find(t=>t.id===id)
-  if (task) pushUndo({taskId:id, fields:{duration_minutes:task.duration_minutes||60}})
-  await api('PUT',`/api/tasks/${id}`,{duration_minutes:newDuration})
-  calPushToGcal(id)
-  _calResizing = null
-  renderCalendar()
-}
-
-// GCal auto-push
-async function calPushToGcal(id) {
-  if (!state._calConnected) return
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  api('POST', `/api/calendar/push-task/${id}`, {timezone: tz})
-}
-async function calDeleteFromGcal(id) {
-  if (!state._calConnected) return
-  api('DELETE', `/api/calendar/push-task/${id}`)
-}
-
-// Panel drag-over feedback (for mouse-based block dragging)
-function calPanelDragOver(e) { e.preventDefault(); document.getElementById('cal-unscheduled-panel')?.classList.add('cal-panel-drop-active') }
-function calPanelDragLeave(e) { if (!e.currentTarget.contains(e.relatedTarget)) document.getElementById('cal-unscheduled-panel')?.classList.remove('cal-panel-drop-active') }
-async function calPanelDrop(e) {
-  e.preventDefault()
-  document.getElementById('cal-unscheduled-panel')?.classList.remove('cal-panel-drop-active')
-  const id = parseInt(e.dataTransfer.getData('text/plain'))
-  if (!id) return
-  const task = taskBefore(id)
-  if (task) pushUndo({taskId:id, fields:{start_time:task.start_time||''}})
-  await api('PUT',`/api/tasks/${id}`,{start_time:'', duration_minutes:60})
-  calDeleteFromGcal(id)
-  renderCalendar()
-}
-
-// Also show panel highlight when mouse-dragging a block over it
-document.addEventListener('mousemove', e => {
-  if (!_calMoving) return
-  const overPanel = document.elementFromPoint(e.clientX, e.clientY)?.closest('#cal-unscheduled-panel')
-  document.getElementById('cal-unscheduled-panel')?.classList.toggle('cal-panel-drop-active', !!overPanel)
-})
-
-// GCal event popup
-function showGcalPopup(e, idx) {
-  e.stopPropagation()
-  closeGcalPopup()
-  const ev = (window._calGcalCache||[])[idx]
-  if (!ev) return
-  const popup = document.getElementById('cal-gcal-popup')
-  popup.innerHTML = `
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <div class="font-medium text-sm text-gray-800 mb-1 leading-snug">${esc(ev.title)}</div>
-        <div class="text-xs text-gray-500">${fmtBlockTime(ev.start_time, ev.duration_minutes)}</div>
-      </div>
-      <button onmousedown="event.stopPropagation()" onclick="closeGcalPopup()" class="text-gray-300 hover:text-gray-600 text-lg leading-none mt-0.5 flex-shrink-0">×</button>
-    </div>`
-  const x = Math.min(e.clientX + 8, window.innerWidth - 290)
-  const y = Math.min(e.clientY + 8, window.innerHeight - 80)
-  popup.style.left = `${x}px`
-  popup.style.top = `${y}px`
-  popup.classList.remove('hidden')
-  setTimeout(() => document.addEventListener('click', closeGcalPopup, {once:true}), 0)
-}
-function closeGcalPopup() {
-  document.getElementById('cal-gcal-popup')?.classList.add('hidden')
-}
 
 // ── API KEY ───────────────────────────────────────────────────────────────
 
@@ -2539,7 +1880,6 @@ function briefToast(msg) {
 async function init() {
   try {
     checkApiStatus()
-    checkCalStatus()
     await loadReminders()
     checkArchiveBanner()
     showSection('today')
