@@ -874,12 +874,16 @@ def archive_week():
     today = date.today()
     monday = today - timedelta(days=today.weekday())
     week_label = monday.isoformat()
+    # Only sweep up what belongs to the week being archived. Without this cutoff,
+    # archiving on a Sunday would also swallow the week you just finished planning.
+    cutoff = (monday + timedelta(days=6)).isoformat()
     conn = get_db()
     result = conn.execute(
         '''UPDATE tasks SET archived_week = ?
            WHERE task_type IN ('main','smaller','top3')
-           AND (archived_week IS NULL OR archived_week = '')''',
-        (week_label,)
+           AND (archived_week IS NULL OR archived_week = '')
+           AND (scheduled_date IS NULL OR scheduled_date = '' OR scheduled_date <= ?)''',
+        (week_label, cutoff)
     )
     conn.commit()
     count = result.rowcount

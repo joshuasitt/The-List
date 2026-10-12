@@ -253,7 +253,10 @@
     <div class="max-w-xl">
       <h1 class="text-xl font-semibold mb-5 flex items-center justify-between">
         Master List
-        <button id="select-mode-btn" onclick="toggleSelectMode()" class="text-xs font-normal text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100">Select</button>
+        <span class="flex items-center gap-1">
+          <button onclick="rollWeekForward()" title="Move everything dated last week forward 7 days, same weekday" class="text-xs font-normal text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100">Roll week →</button>
+          <button id="select-mode-btn" onclick="toggleSelectMode()" class="text-xs font-normal text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100">Select</button>
+        </span>
       </h1>
 
       <!-- Sunday archive prompt -->
@@ -486,10 +489,30 @@ const state = {
 // ── UTILS ─────────────────────────────────────────────────────────────────
 
 function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+// Planning week start. On Sunday you are planning the week AHEAD, so Sunday
+// rolls FORWARD to tomorrow's Monday instead of back into the week that just ended.
 function getMonday(d) {
+  const date = new Date(d); const day = date.getDay()
+  date.setDate(date.getDate() + (day === 0 ? 1 : 1 - day))
+  date.setHours(0,0,0,0); return date
+}
+// Calendar week start — the Monday of the week that actually contains this date.
+// Used where a strip has to include the day being viewed, Sunday included.
+function getCalendarMonday(d) {
   const date = new Date(d); const day = date.getDay()
   date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day))
   date.setHours(0,0,0,0); return date
+}
+// The seven days of the planning week, as {label, date} for day pickers.
+function planningWeekDays() {
+  const mon = getMonday(new Date(state.today + 'T12:00:00'))
+  return Array.from({length:7}, (_, i) => {
+    const d = addDays(mon, i)
+    return {
+      label: `${d.toLocaleDateString('en-US',{weekday:'short'})} ${d.getDate()}`,
+      date: formatDate(d)
+    }
+  })
 }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r }
 function isPast(s) { return s && s < state.today }
@@ -891,15 +914,8 @@ function updateSelectBar() {
     const d = new Date(base); d.setDate(base.getDate() + offset)
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }
-  const days = [
-    {label:'Sun', date: nd(sunNoon,0)},
-    {label:'Mon', date: nd(sunNoon,1)},
-    {label:'Tue', date: nd(sunNoon,2)},
-    {label:'Wed', date: nd(sunNoon,3)},
-    {label:'Thu', date: nd(sunNoon,4)},
-    {label:'Fri', date: nd(sunNoon,5)},
-    {label:'Next ›', date: nd(sunNoon,7)},
-  ]
+  const days = [{label:'Today', date: state.today}]
+    .concat(planningWeekDays().filter(d => d.date !== state.today))
   document.getElementById('select-day-btns').innerHTML =
     days.map(d => `<button onclick="bulkSetDate('${d.date}')" class="text-xs px-2.5 py-1.5 rounded-lg flex-shrink-0 font-medium ${d.date===state.today?'bg-amber-500 text-white':'bg-gray-700 hover:bg-gray-500 text-gray-200'}">${d.label}</button>`).join('') +
     `<button onclick="bulkSetDate('')" class="text-xs px-2.5 py-1.5 rounded-lg flex-shrink-0 text-red-400 bg-gray-800 hover:bg-red-600 hover:text-white">Clear</button>`
@@ -1130,15 +1146,9 @@ function openReschedule(taskId, evt) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }
 
-  const dayEntries = [
-    {label:'Sun', date: noonDate(sunNoon, 0)},
-    {label:'Mon', date: noonDate(sunNoon, 1)},
-    {label:'Tue', date: noonDate(sunNoon, 2)},
-    {label:'Wed', date: noonDate(sunNoon, 3)},
-    {label:'Thu', date: noonDate(sunNoon, 4)},
-    {label:'Fri', date: noonDate(sunNoon, 5)},
-    {label:'Sun ›', date: noonDate(sunNoon, 7)},
-  ]
+  // Today first, then the whole planning week (which on Sunday is the week ahead)
+  const dayEntries = [{label:'Today', date: state.today}]
+    .concat(planningWeekDays().filter(d => d.date !== state.today))
 
   picker.innerHTML = dayEntries.map(o => `
     <button onclick="pickDay('${o.date}')" style="color:${o.date===state.today?'#D97706':'#374151'}">${esc(o.label)}</button>
@@ -1148,7 +1158,7 @@ function openReschedule(taskId, evt) {
 
   // Position right next to where they clicked
   const rect = evt.target.getBoundingClientRect()
-  const pickerW = 120, pickerH = 6 * 34 + 16
+  const pickerW = 128, pickerH = (dayEntries.length + 2) * 34 + 16
   let top = rect.bottom + 4
   let left = rect.left
   if (top + pickerH > window.innerHeight) top = rect.top - pickerH - 4
@@ -1194,6 +1204,32 @@ async function rescheduleToDate(date) { await pickDay(date) }
 function prevWeek() { state.weekStart = addDays(state.weekStart,-7); renderWeek() }
 function nextWeek() { state.weekStart = addDays(state.weekStart,7); renderWeek() }
 function goToThisWeek() { state.weekStart = getMonday(new Date()); renderWeek() }
+
+// Shift every pending item dated in last week forward by 7 days, keeping its
+// weekday. This is the Sunday rollover: anything planned or left over in the week
+// just ending lands on the matching day of the week ahead. Cmd+Z undoes it.
+async function rollWeekForward() {
+  const planMon = getMonday(new Date(state.today + 'T12:00:00'))
+  const from = formatDate(addDays(planMon, -7))
+  const to = formatDate(addDays(planMon, -1))
+  const tasks = filterPending(await api('GET', '/api/tasks'))
+  const moving = tasks.filter(t => !t.completed && t.scheduled_date
+    && t.scheduled_date >= from && t.scheduled_date <= to)
+  if (!moving.length) return briefToast('Nothing dated last week to move')
+  const plural = moving.length === 1 ? '' : 's'
+  const ok = confirm(
+    `Move ${moving.length} item${plural} forward one week?\n\n` +
+    `${fmtDisplayDate(from)} – ${fmtDisplayDate(to)}\n` +
+    `  →  ${fmtDisplayDate(formatDate(planMon))} – ${fmtDisplayDate(formatDate(addDays(planMon, 6)))}\n\n` +
+    `Each item keeps its weekday. Cmd+Z undoes this.`)
+  if (!ok) return
+  pushUndo(moving.map(t => ({taskId: t.id, fields: {scheduled_date: t.scheduled_date}})))
+  await Promise.all(moving.map(t => api('PUT', `/api/tasks/${t.id}`, {
+    scheduled_date: formatDate(addDays(new Date(t.scheduled_date + 'T12:00:00'), 7))
+  })))
+  briefToast(`${moving.length} item${plural} moved to this week`)
+  renderWeek()
+}
 
 const debounceWeekGoal = debounce(async () => {
   const ws = formatDate(state.weekStart)
@@ -1363,7 +1399,7 @@ function toggleWeekSnap() {
 }
 
 async function renderWeekSnap() {
-  const mon = getMonday(new Date(state.viewDay + 'T12:00:00'))
+  const mon = getCalendarMonday(new Date(state.viewDay + 'T12:00:00'))
   const days = Array.from({length:7},(_,i)=>formatDate(addDays(mon,i)))
   const tasks = await api('GET', `/api/tasks?week_start=${formatDate(mon)}`)
   const grid = document.getElementById('week-snap-grid')
