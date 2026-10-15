@@ -97,6 +97,17 @@ def init_db():
             conn.commit()
         except Exception:
             pass
+
+    # Thinking About: each entry is a thought (content) plus notes written under it.
+    for col, ddl in [
+        ('notes', 'TEXT DEFAULT ""'),
+        ('is_open', 'INTEGER DEFAULT 1'),
+    ]:
+        try:
+            conn.execute(f'ALTER TABLE ideas ADD COLUMN {col} {ddl}')
+            conn.commit()
+        except Exception:
+            pass
     conn.close()
 
 
@@ -251,6 +262,25 @@ def create_idea():
     conn.commit()
     conn.close()
     return jsonify(idea), 201
+
+
+@app.route('/api/ideas/<int:iid>', methods=['PUT'])
+def update_idea(iid):
+    data = request.json or {}
+    fields, values = [], []
+    for key in ('content', 'notes', 'is_open'):
+        if key in data:
+            fields.append(f'{key}=?')
+            values.append(data[key])
+    if not fields:
+        return jsonify({'ok': True})
+    values.append(iid)
+    conn = get_db()
+    conn.execute(f'UPDATE ideas SET {", ".join(fields)} WHERE id=?', values)
+    conn.commit()
+    row = conn.execute('SELECT * FROM ideas WHERE id=?', (iid,)).fetchone()
+    conn.close()
+    return jsonify(dict(row) if row else {'ok': True})
 
 
 @app.route('/api/ideas/<int:iid>', methods=['DELETE'])
