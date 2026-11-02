@@ -842,22 +842,61 @@ function clearSelection() {
 // ── UNDO ──────────────────────────────────────────────────────────────────
 
 const _undoStack = []
+const _redoStack = []
+// Cmd+Z only reaches back this far — older changes are treated as settled,
+// so a stray keypress can't quietly revert something from earlier in the day.
+const UNDO_WINDOW_MS = 15 * 60 * 1000
 function pushUndo(changes) {
-  _undoStack.push(Array.isArray(changes) ? changes : [changes])
+  const c = Array.isArray(changes) ? changes : [changes]
+  c.at = Date.now()
+  _undoStack.push(c)
   if (_undoStack.length > 40) _undoStack.shift()
+  _redoStack.length = 0
+}
+function dropStale(stack) {
+  const cutoff = Date.now() - UNDO_WINDOW_MS
+  while (stack.length && stack[0].at < cutoff) stack.shift()
+}
+// Snapshot the current values of the fields a change set is about to overwrite,
+// so the opposite stack can put them back.
+function snapshotOf(changes) {
+  return changes.map(c => {
+    const t = taskBefore(c.taskId)
+    if (!t) return null
+    const fields = {}
+    for (const k of Object.keys(c.fields)) fields[k] = t[k] ?? (k === 'notes' || k === 'scheduled_date' ? '' : t[k])
+    return {taskId: c.taskId, fields}
+  }).filter(Boolean)
+}
+async function applyChanges(changes) {
+  await Promise.all(changes.map(c => api('PUT', `/api/tasks/${c.taskId}`, c.fields)))
+  if (state.section==='today') await renderToday()
+  if (state.section==='week') await renderWeek()
 }
 async function cmdUndo() {
   if (_pendingDelete) return undoDelete()
+  dropStale(_undoStack)
   if (!_undoStack.length) return
   const changes = _undoStack.pop()
-  await Promise.all(changes.map(c => api('PUT', `/api/tasks/${c.taskId}`, c.fields)))
-  if (state.section==='today') renderToday()
-  if (state.section==='week') renderWeek()
+  const redo = snapshotOf(changes); redo.at = changes.at
+  _redoStack.push(redo)
+  await applyChanges(changes)
+}
+async function cmdRedo() {
+  dropStale(_redoStack)
+  if (!_redoStack.length) return
+  const changes = _redoStack.pop()
+  const undo = snapshotOf(changes); undo.at = changes.at
+  _undoStack.push(undo)
+  await applyChanges(changes)
 }
 document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-    e.preventDefault(); cmdUndo()
-  }
+  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return
+  // While typing in a box, let Cmd+Z / Cmd+Shift+Z undo the typing itself
+  // instead of reverting some earlier change elsewhere on the list.
+  if (e.target.closest('input, textarea, [contenteditable="true"]')) return
+  e.preventDefault()
+  e.shiftKey ? cmdRedo() : cmdUndo()
 })
 
 // ── DRAG & DROP ───────────────────────────────────────────────────────────
