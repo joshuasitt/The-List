@@ -91,6 +91,7 @@ def init_db():
         ('duration_minutes', 'INTEGER DEFAULT 60'),
         ('gcal_event_id', 'TEXT DEFAULT ""'),
         ('archived_week', 'TEXT DEFAULT NULL'),
+        ('link', 'TEXT DEFAULT ""'),
     ]:
         try:
             conn.execute(f'ALTER TABLE tasks ADD COLUMN {col} {ddl}')
@@ -213,7 +214,7 @@ def create_task():
 def update_task(tid):
     d = request.json
     fields, vals = [], []
-    for f in ('title', 'notes', 'area', 'scheduled_date', 'sort_order', 'time_estimate', 'task_type', 'start_time', 'duration_minutes'):
+    for f in ('title', 'notes', 'area', 'scheduled_date', 'sort_order', 'time_estimate', 'task_type', 'start_time', 'duration_minutes', 'link'):
         if f in d:
             fields.append(f'{f} = ?')
             vals.append(d[f] if d[f] != '' or f != 'scheduled_date' else None)
