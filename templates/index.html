@@ -95,6 +95,8 @@
     .top3-slot-head { display: flex; align-items: center; gap: 10px; }
     .top3-slot:hover { background: #FAFAF8; }
     .top3-slot:hover .notes-icon { opacity: 1; }
+    .project-num { font-size: 13px; font-weight: 700; color: #111; min-width: 18px; text-align: right; flex-shrink: 0; }
+    .task-row.completed .project-num { color: #D1D5DB; }
     .top3-num { font-size: 13px; font-weight: 700; color: #E5E7EB; width: 16px; text-align: center; flex-shrink: 0; }
     .top3-slot.has-task .top3-num { color: #111; }
     .top3-slot.has-task .top3-num.top3-over { color: #EF4444; }
@@ -317,6 +319,20 @@
           <div class="task-check" style="opacity:0.2; width:13px; height:13px; min-width:13px;"></div>
           <input id="master-bank-input" class="quick-input text-sm text-gray-400" placeholder="Add to bank..."
             onkeydown="if(event.key==='Enter') addMasterTask('bank')">
+        </div>
+      </div>
+
+      <!-- Big Projects -->
+      <div class="mt-6 pt-5 border-t border-gray-100">
+        <div class="section-label mb-1">Big Projects</div>
+        <div class="text-xs text-gray-400 mb-3 -mt-1">In priority order — drag to reorder</div>
+        <div id="master-projects" class="space-y-0.5 mb-2 min-h-6"
+          ondragover="event.preventDefault()"
+          ondrop="dropOnSection(event,'master-projects')"></div>
+        <div class="flex items-center gap-2 px-3 py-1.5">
+          <span class="project-num" style="opacity:0.35">+</span>
+          <input id="master-projects-input" class="quick-input text-sm text-gray-400" placeholder="Add a big project..."
+            onkeydown="if(event.key==='Enter') addMasterTask('project')">
         </div>
       </div>
 
@@ -1064,6 +1080,7 @@ async function dragDrop(e, targetId) {
   if (container.id === 'master-smaller') newType = 'smaller'
   else if (container.id === 'master-main') newType = 'main'
   else if (container.id === 'master-bank') newType = 'bank'
+  else if (container.id === 'master-projects') newType = 'project'
   else if (container.id === 'today-smaller') { newType = 'smaller'; intoToday = true }
   else if (container.id === 'today-main') { newType = 'main'; intoToday = true }
 
@@ -1125,7 +1142,7 @@ async function dropOnSection(e, containerId) {
   if (!_dragId) return
   const container = document.getElementById(containerId)
   if (!container) return
-  const newType = containerId==='master-smaller' ? 'smaller' : containerId==='master-bank' ? 'bank' : 'main'
+  const newType = {'master-smaller':'smaller', 'master-bank':'bank', 'master-projects':'project'}[containerId] || 'main'
   const ids = [..._selected]
   const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0}} : null }).filter(Boolean)
   if (before.length) pushUndo(before)
@@ -1331,8 +1348,12 @@ const debounceWeekGoal = debounce(async () => {
 async function renderWeek() {
   const tasks = filterPending(await api('GET', '/api/tasks'))
   state._tasksCache = tasks
-  const done = tasks.filter(t => t.completed && t.task_type !== 'top3')
+  // Finished projects stay in their own list (unnumbered, at the bottom) — the
+  // Completed list gets archived weekly, and projects aren't weekly items.
+  const done = tasks.filter(t => t.completed && t.task_type !== 'top3' && t.task_type !== 'project')
   const bank = tasks.filter(t => t.task_type === 'bank')
+  const projects = tasks.filter(t => t.task_type === 'project')
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id)
   const sortActiveLast = arr => [...arr.filter(t=>!t.completed), ...arr.filter(t=>t.completed)]
 
   // Top 3
@@ -1410,7 +1431,10 @@ async function renderWeek() {
     return `<span class="day-badge ${isToday_?'is-today':'assigned'}" onclick="openReschedule(${task.id},event)" title="Change day">${label}</span>`
   }
 
-  function masterRow(task) {
+  // num: priority number shown in Big Projects. Projects get no day badge —
+  // a date would pull them into Today as if they were a single day's task.
+  function masterRow(task, num) {
+    const isProject = task.task_type === 'project'
     const done = task.completed
     const hasNotes = task.notes && task.notes.trim()
     return `
@@ -1424,6 +1448,7 @@ async function renderWeek() {
         <div class="drag-handle" onmousedown="document.getElementById('task-${task.id}').draggable=true" onmouseup="document.getElementById('task-${task.id}').draggable=false">
           <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
         </div>
+        ${isProject ? `<span class="project-num">${done ? '' : num}</span>` : ''}
         <div class="task-check ${done?'done':''}" onclick="toggleTask(${task.id},${!done})"></div>
         <span class="task-title flex-1 text-sm leading-snug ${done?'line-through text-gray-400':''}"
           contenteditable="${done?'false':'true'}"
@@ -1433,7 +1458,7 @@ async function renderWeek() {
         <button title="Notes" onclick="toggleNotes(${task.id},this)" class="notes-icon ${hasNotes?'has-notes':''}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </button>
-        ${dayBadge(task)}
+        ${isProject ? '' : dayBadge(task)}
         <div class="task-actions flex items-center gap-0.5">
           <button onclick="deleteTask(${task.id})" class="text-gray-300 hover:text-red-400 p-1">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1451,10 +1476,10 @@ async function renderWeek() {
 
   const main = sortActiveLast(tasks.filter(t=>(t.task_type||'main')==='main' && t.task_type!=='top3' && t.task_type!=='bank'))
   const smaller = sortActiveLast(tasks.filter(t=>t.task_type==='smaller'))
-  state._backlogTitles = tasks.filter(t=>!t.completed&&(!t.scheduled_date||t.scheduled_date==='')&&t.task_type!=='top3'&&t.task_type!=='bank').map(t=>t.title)
+  state._backlogTitles = tasks.filter(t=>!t.completed&&(!t.scheduled_date||t.scheduled_date==='')&&t.task_type!=='top3'&&t.task_type!=='bank'&&t.task_type!=='project').map(t=>t.title)
 
-  document.getElementById('master-main').innerHTML = main.map(masterRow).join('')
-  document.getElementById('master-smaller').innerHTML = smaller.map(masterRow).join('')
+  document.getElementById('master-main').innerHTML = main.map(t => masterRow(t)).join('')
+  document.getElementById('master-smaller').innerHTML = smaller.map(t => masterRow(t)).join('')
 
   const completedWrap = document.getElementById('master-completed-wrap')
   const completedEl = document.getElementById('master-completed')
@@ -1462,13 +1487,16 @@ async function renderWeek() {
   if (done.length) {
     completedWrap.classList.remove('hidden')
     archiveLabel.textContent = `Completed (${done.length})`
-    completedEl.innerHTML = done.map(masterRow).join('')
+    completedEl.innerHTML = done.map(t => masterRow(t)).join('')
   } else {
     completedWrap.classList.add('hidden')
   }
 
   const bankEl = document.getElementById('master-bank')
-  if (bankEl) bankEl.innerHTML = bank.map(masterRow).join('')
+  if (bankEl) bankEl.innerHTML = bank.map(t => masterRow(t)).join('')
+  const projEl = document.getElementById('master-projects')
+  if (projEl) projEl.innerHTML = [...projects.filter(t => !t.completed), ...projects.filter(t => t.completed)]
+    .map((t, i) => masterRow(t, i + 1)).join('')
   initSortable()
 }
 
@@ -1532,11 +1560,16 @@ async function addTop3(input) {
 }
 
 async function addMasterTask(type='main') {
-  const inputId = type==='main' ? 'master-input' : type==='smaller' ? 'master-smaller-input' : 'master-bank-input'
+  const inputId = {main:'master-input', smaller:'master-smaller-input', bank:'master-bank-input', project:'master-projects-input'}[type]
   const input = document.getElementById(inputId)
   const title = input.value.trim(); if (!title) return
   input.value = ''
-  await api('POST', '/api/tasks', {title, area:'General', task_type: type, time_estimate: ''})
+  const t = await api('POST', '/api/tasks', {title, area:'General', task_type: type, time_estimate: ''})
+  if (type === 'project' && t?.id) {
+    const last = (state._tasksCache || []).filter(x => x.task_type === 'project')
+      .reduce((m, x) => Math.max(m, x.sort_order || 0), -1)
+    await api('PUT', `/api/tasks/${t.id}`, {sort_order: last + 1})
+  }
   renderWeek()
 }
 
@@ -1892,6 +1925,7 @@ function initSortable() {
     { id: 'master-main',    type: 'main' },
     { id: 'master-smaller', type: 'smaller' },
     { id: 'master-bank',    type: 'bank' },
+    { id: 'master-projects', type: 'project' },
     { id: 'top3-list',      type: 'top3' },
   ]
   sections.forEach(({ id, type }) => {
@@ -1910,7 +1944,7 @@ function initSortable() {
       onEnd: async (evt) => {
         window._sortableDragging = false
         const taskId = parseInt(evt.item.id.replace('task-', ''))
-        const typeMap = { 'master-main': 'main', 'master-smaller': 'smaller', 'master-bank': 'bank', 'top3-list': 'top3' }
+        const typeMap = { 'master-main': 'main', 'master-smaller': 'smaller', 'master-bank': 'bank', 'master-projects': 'project', 'top3-list': 'top3' }
         const newType = typeMap[evt.to.id] || type
         if (newType !== type || evt.from !== evt.to) {
           const res = await api('PUT', `/api/tasks/${taskId}`, { task_type: newType })
@@ -1920,10 +1954,15 @@ function initSortable() {
           }
         }
         const items = [...evt.to.querySelectorAll('[id^="task-"]')]
-        items.forEach((el, i) => {
-          const id = parseInt(el.id.replace('task-', ''))
-          api('PUT', `/api/tasks/${id}`, { sort_order: i })
-        })
+        // Record the old order so Cmd+Z puts a drag back
+        const ids = items.map(el => parseInt(el.id.replace('task-', '')))
+        const before = ids.map(id => { const t = taskBefore(id); return t ? {taskId: id, fields: {task_type: t.task_type||'main', sort_order: t.sort_order||0}} : null }).filter(Boolean)
+        if (before.length) pushUndo(before)
+        await Promise.all(ids.map((id, i) => api('PUT', `/api/tasks/${id}`, { sort_order: i })))
+        ids.forEach((id, i) => { const t = taskBefore(id); if (t) { t.sort_order = i; t.task_type = typeMap[evt.to.id] || t.task_type } })
+        // Moving into, out of, or within Big Projects changes the numbers and
+        // whether a row gets a day badge, so redraw.
+        if (evt.to.id === 'master-projects' || evt.from.id === 'master-projects') renderWeek()
       }
     })
   })
