@@ -51,6 +51,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     #undo-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; font-size: 13px; padding: 10px 16px; border-radius: 10px; display: flex; align-items: center; gap: 12px; z-index: 200; box-shadow: 0 4px 16px rgba(0,0,0,0.2); transition: opacity 0.2s; }
+    .undo-flash { background-color: #FEF3C7 !important; transition: background-color .6s; }
     #undo-toast.hidden { opacity: 0; pointer-events: none; }
 
     .week-grid { display: grid; grid-template-columns: repeat(7, 1fr) 150px; gap: 6px; }
@@ -841,21 +842,32 @@ function clearSelection() {
 
 // ── UNDO ──────────────────────────────────────────────────────────────────
 
+// One history for the whole app, like a Google Doc: task changes and anything
+// typed into a box anywhere. Each entry remembers which section it happened in,
+// and Cmd+Z only reaches entries from the section you're looking at, so it
+// never reverts something you can't see.
 const _undoStack = []
 const _redoStack = []
 // Cmd+Z only reaches back this far — older changes are treated as settled,
 // so a stray keypress can't quietly revert something from earlier in the day.
 const UNDO_WINDOW_MS = 15 * 60 * 1000
-function pushUndo(changes) {
-  const c = Array.isArray(changes) ? changes : [changes]
-  c.at = Date.now()
-  _undoStack.push(c)
-  if (_undoStack.length > 40) _undoStack.shift()
+function pushEntry(entry) {
+  entry.at = Date.now()
+  entry.section = entry.section || state.section
+  _undoStack.push(entry)
+  if (_undoStack.length > 100) _undoStack.shift()
   _redoStack.length = 0
 }
-function dropStale(stack) {
+function pushUndo(changes) {
+  pushEntry({kind: 'tasks', changes: Array.isArray(changes) ? changes : [changes]})
+}
+// Pull the newest entry for the current section, dropping anything stale.
+function takeEntry(stack) {
   const cutoff = Date.now() - UNDO_WINDOW_MS
   while (stack.length && stack[0].at < cutoff) stack.shift()
+  for (let i = stack.length - 1; i >= 0; i--)
+    if (stack[i].section === state.section) return stack.splice(i, 1)[0]
+  return null
 }
 // Snapshot the current values of the fields a change set is about to overwrite,
 // so the opposite stack can put them back.
@@ -873,23 +885,62 @@ async function applyChanges(changes) {
   if (state.section==='today') await renderToday()
   if (state.section==='week') await renderWeek()
 }
+// Applies an entry and returns its inverse for the opposite stack.
+async function applyEntry(entry) {
+  if (entry.kind === 'tasks') {
+    const inverse = {...entry, changes: snapshotOf(entry.changes)}
+    await applyChanges(entry.changes)
+    return inverse
+  }
+  const el = findField(entry.key)
+  if (!el) return null
+  el.value = entry.before
+  // Fire the field's own handlers so it saves exactly as if typed.
+  el.dispatchEvent(new Event('input', {bubbles: true}))
+  el.dispatchEvent(new Event('change', {bubbles: true}))
+  el.classList.add('undo-flash'); setTimeout(() => el.classList.remove('undo-flash'), 600)
+  return {...entry, before: entry.after, after: entry.before}
+}
 async function cmdUndo() {
   if (_pendingDelete) return undoDelete()
-  dropStale(_undoStack)
-  if (!_undoStack.length) return
-  const changes = _undoStack.pop()
-  const redo = snapshotOf(changes); redo.at = changes.at
-  _redoStack.push(redo)
-  await applyChanges(changes)
+  const entry = takeEntry(_undoStack)
+  if (!entry) return
+  const inverse = await applyEntry(entry)
+  if (inverse) _redoStack.push(inverse)
 }
 async function cmdRedo() {
-  dropStale(_redoStack)
-  if (!_redoStack.length) return
-  const changes = _redoStack.pop()
-  const undo = snapshotOf(changes); undo.at = changes.at
-  _undoStack.push(undo)
-  await applyChanges(changes)
+  const entry = takeEntry(_redoStack)
+  if (!entry) return
+  const inverse = await applyEntry(entry)
+  if (inverse) _undoStack.push(inverse)
 }
+
+// Text boxes outside task rows (Thinking About, Personal, Weekly Checklist,
+// add boxes…) are recorded as one entry per edit: the value when you clicked
+// in, and the value when you clicked out. Task rows record their own changes.
+function isTrackedField(el) {
+  if (!el.matches || !el.matches('textarea, input:not([type]), input[type="text"]')) return false
+  return !el.closest('.task-row, .top3-slot, [id^="task-"]')
+}
+// A key that finds the same box again even after its section re-renders.
+function fieldKey(el) {
+  if (el.id) return '#' + el.id
+  return [el.tagName, el.getAttribute('oninput') || '', JSON.stringify({...el.dataset})].join('|')
+}
+function findField(key) {
+  if (key.startsWith('#')) return document.getElementById(key.slice(1))
+  return [...document.querySelectorAll('input, textarea')].find(el => fieldKey(el) === key) || null
+}
+let _fieldStart = null
+document.addEventListener('focusin', e => {
+  _fieldStart = isTrackedField(e.target) ? {el: e.target, value: e.target.value, section: state.section} : null
+})
+document.addEventListener('focusout', e => {
+  const start = _fieldStart; _fieldStart = null
+  if (!start || start.el !== e.target || e.target.value === start.value) return
+  pushEntry({kind: 'field', key: fieldKey(e.target), before: start.value, after: e.target.value, section: start.section})
+})
+
 document.addEventListener('keydown', e => {
   if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return
   // While typing in a box, let Cmd+Z / Cmd+Shift+Z undo the typing itself
