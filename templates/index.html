@@ -1168,7 +1168,12 @@ function filterPending(tasks) {
 async function deleteTask(id) {
   if (_pendingDelete) await _flushDelete()
   _pendingDelete = id
-  document.getElementById(`task-${id}`)?.remove()
+  // Top 3 always shows three numbered slots, so redraw it with an empty slot
+  // where the task was instead of removing the row. Other rows can just go —
+  // every copy of them, since a task can be on screen in more than one section.
+  const wasTop3 = taskBefore(id)?.task_type === 'top3'
+  document.querySelectorAll(`[id="task-${id}"]`).forEach(el => el.remove())
+  if (wasTop3) renderWeek()
   const toast = document.getElementById('undo-toast')
   toast.classList.remove('hidden')
   clearTimeout(_deleteTimer)
@@ -1603,6 +1608,9 @@ function navToDay(date) {
 async function addTop3(input) {
   const title = input.value.trim(); if (!title) return
   input.value = ''
+  // A just-deleted item is still on the server for the undo window; finish
+  // deleting it first, or the server counts it and bumps a real one out.
+  if (_pendingDelete) await _flushDelete()
   await api('POST', '/api/tasks', {title, area:'General', task_type:'top3'})
   renderWeek()
 }
@@ -1995,6 +2003,7 @@ function initSortable() {
         const typeMap = { 'master-main': 'main', 'master-smaller': 'smaller', 'master-bank': 'bank', 'master-projects': 'project', 'top3-list': 'top3' }
         const newType = typeMap[evt.to.id] || type
         if (newType !== type || evt.from !== evt.to) {
+          if (newType === 'top3' && _pendingDelete) await _flushDelete()
           const res = await api('PUT', `/api/tasks/${taskId}`, { task_type: newType })
           if (res?.demoted?.length) {
             briefToast(`Top 3 is full — bumped ${res.demoted.length} down to Priorities`)
@@ -2010,7 +2019,8 @@ function initSortable() {
         ids.forEach((id, i) => { const t = taskBefore(id); if (t) { t.sort_order = i; t.task_type = typeMap[evt.to.id] || t.task_type } })
         // Moving into, out of, or within Big Projects changes the numbers and
         // whether a row gets a day badge, so redraw.
-        if (evt.to.id === 'master-projects' || evt.from.id === 'master-projects') renderWeek()
+        // Top 3 keeps three fixed slots, so dragging in or out needs a redraw too.
+        if ([evt.to.id, evt.from.id].some(id => id === 'master-projects' || id === 'top3-list')) renderWeek()
       }
     })
   })
