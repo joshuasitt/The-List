@@ -109,6 +109,8 @@
     .day-badge.is-today { background: #FEF3C7; color: #D97706; }
     .task-notes-wrap { display: none; }
     .task-notes-wrap.open { display: block; }
+    /* thin yellow line across the top of anything that has notes */
+    .has-note { box-shadow: inset 0 2px 0 #FCD34D; }
     .task-notes-input { width: 100%; border: none; outline: none; background: transparent; font-size: 12px; color: #6B7280; resize: none; line-height: 1.5; padding: 4px 0 2px 0; }
     .task-notes-input::placeholder { color: #D1D0CC; }
 
@@ -670,7 +672,7 @@ function taskRow(task, showDate=false) {
   const timeStr = task.time_estimate ? `<span class="time-badge">${esc(task.time_estimate)}</span>` : ''
   const hasNotes = task.notes && task.notes.trim()
   return `
-  <div class="task-row flex flex-col py-2 px-3 rounded-lg hover:bg-white group ${done?'completed':''}" id="task-${task.id}"
+  <div class="task-row flex flex-col py-2 px-3 rounded-lg hover:bg-white group ${done?'completed':''} ${hasNotes?'has-note':''}" id="task-${task.id}"
     draggable="true"
     onclick="taskRowClick(event,${task.id})"
     ondragstart="dragStart(event,${task.id})"
@@ -705,7 +707,7 @@ function taskRow(task, showDate=false) {
         </button>
       </div>
     </div>
-    <div class="task-notes-wrap pl-7 ${hasNotes?'open':''}" id="notes-${task.id}">
+    <div class="task-notes-wrap pl-7 ${notesOpen(task.id)?'open':''}" id="notes-${task.id}">
       <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
         onblur="saveTaskNotes(${task.id},this.value)"
         onkeydown="if(event.key==='Escape')this.blur()"
@@ -718,7 +720,7 @@ function taskRowSmall(task, dimmed=false) {
   const done = task.completed
   const hasNotes = task.notes && task.notes.trim()
   return `
-  <div class="task-row flex flex-col py-1.5 px-3 rounded-lg hover:bg-white group ${done?'completed':''}" id="task-${task.id}"
+  <div class="task-row flex flex-col py-1.5 px-3 rounded-lg hover:bg-white group ${done?'completed':''} ${hasNotes?'has-note':''}" id="task-${task.id}"
     draggable="true"
     onclick="taskRowClick(event,${task.id})"
     ondragstart="dragStart(event,${task.id})"
@@ -748,7 +750,7 @@ function taskRowSmall(task, dimmed=false) {
         </button>
       </div>
     </div>
-    <div class="task-notes-wrap pl-6 ${hasNotes?'open':''}" id="notes-${task.id}">
+    <div class="task-notes-wrap pl-6 ${notesOpen(task.id)?'open':''}" id="notes-${task.id}">
       <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
         onblur="saveTaskNotes(${task.id},this.value)"
         onkeydown="if(event.key==='Escape')this.blur()"
@@ -797,12 +799,18 @@ async function renameTask(id, title) {
 // places at once (a top3 item scheduled for today sits in both Today and
 // Master). getElementById would grab whichever copy comes first in the
 // document — often a hidden one — so scope to the row that was clicked.
+// Notes panels start closed and stay however you last left them — redraws
+// (which happen constantly) used to pop open every task that had notes.
+const _openNotes = new Set((() => { try { return JSON.parse(localStorage.getItem('openNotes') || '[]') } catch { return [] } })())
+function notesOpen(id) { return _openNotes.has(id) }
 function toggleNotes(id, el) {
   const row = el && el.closest('.task-row, .top3-slot')
   const wrap = row ? row.querySelector('.task-notes-wrap')
                    : document.getElementById(`notes-${id}`)
   if (!wrap) return
   const isOpen = wrap.classList.toggle('open')
+  isOpen ? _openNotes.add(id) : _openNotes.delete(id)
+  try { localStorage.setItem('openNotes', JSON.stringify([..._openNotes])) } catch {}
   if (isOpen) { const ta = wrap.querySelector('textarea'); if (ta) { ta.focus(); ta.selectionStart = ta.value.length } }
 }
 
@@ -816,8 +824,12 @@ async function saveTaskNotes(id, notes) {
   await api('PUT', `/api/tasks/${id}`, {notes})
   // update every copy of this row — querySelectorAll matches duplicate ids,
   // unlike querySelector which would only reach the first
-  document.querySelectorAll(`[id="task-${id}"] .notes-icon`)
-    .forEach(icon => icon.classList.toggle('has-notes', !!(notes && notes.trim())))
+  const has = !!(notes && notes.trim())
+  document.querySelectorAll(`[id="task-${id}"]`).forEach(row => {
+    row.classList.toggle('has-note', has)
+    row.querySelector('.notes-icon')?.classList.toggle('has-notes', has)
+  })
+  if (t) t.notes = notes
 }
 
 // ── MULTI-SELECT ─────────────────────────────────────────────────────────
@@ -1443,7 +1455,7 @@ async function renderWeek() {
           ? `<span class="day-badge ${t.scheduled_date===state.today?'is-today':'assigned'}" onclick="openReschedule(${t.id},event)">${new Date(t.scheduled_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>`
           : `<span class="day-badge unassigned" onclick="openReschedule(${t.id},event)">+ day</span>`
         const t3HasNotes = t.notes && t.notes.trim()
-        t3html += `<div class="top3-slot has-task group" id="task-${t.id}">
+        t3html += `<div class="top3-slot has-task group ${t3HasNotes?'has-note':''}" id="task-${t.id}">
           <div class="top3-slot-head">
             <div class="drag-handle" title="Drag to reorder">
               <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
@@ -1463,7 +1475,7 @@ async function renderWeek() {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <div class="task-notes-wrap pl-7 ${t3HasNotes?'open':''}" id="notes-${t.id}">
+          <div class="task-notes-wrap pl-7 ${notesOpen(t.id)?'open':''}" id="notes-${t.id}">
             <textarea class="task-notes-input" rows="2" placeholder="Add notes..."
               onblur="saveTaskNotes(${t.id},this.value)"
               onkeydown="if(event.key==='Escape')this.blur()"
@@ -1512,7 +1524,7 @@ async function renderWeek() {
     const done = task.completed
     const hasNotes = task.notes && task.notes.trim()
     return `
-    <div class="task-row flex flex-col py-2 px-3 rounded-lg hover:bg-white group ${done?'completed':''}" id="task-${task.id}"
+    <div class="task-row flex flex-col py-2 px-3 rounded-lg hover:bg-white group ${done?'completed':''} ${hasNotes?'has-note':''}" id="task-${task.id}"
       draggable="false"
       onclick="taskRowClick(event,${task.id})"
       ondragstart="dragStart(event,${task.id})" ondragover="dragOver(event,${task.id})"
@@ -1539,7 +1551,7 @@ async function renderWeek() {
           </button>
         </div>
       </div>
-      <div class="task-notes-wrap pl-9" id="notes-${task.id}">
+      <div class="task-notes-wrap pl-9 ${notesOpen(task.id)?'open':''}" id="notes-${task.id}">
         ${isProject ? `<input class="task-notes-input project-link-input" placeholder="Paste a Google Doc link..."
           value="${esc(task.link||'')}" onblur="saveProjectLink(${task.id},this.value)"
           onkeydown="if(event.key==='Enter'||event.key==='Escape')this.blur()">` : ''}
@@ -1855,7 +1867,7 @@ async function renderIdeas() {
     const open = i.is_open === undefined ? true : !!i.is_open
     const hasNotes = !!(i.notes||'').trim()
     return `
-    <div class="group bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="group bg-white border border-gray-200 rounded-xl overflow-hidden ${hasNotes?'has-note':''}" id="idea-card-${i.id}">
       <div class="flex items-center gap-2 px-4 py-3">
         <button onclick="toggleIdea(${i.id})" class="text-gray-400 hover:text-gray-600 p-0.5 flex-shrink-0" title="${open?'Collapse':'Expand'}">
           <svg id="idea-chev-${i.id}" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:${open?'rotate(90deg)':'none'};transition:transform .12s"><polyline points="9 18 15 12 9 6"/></svg>
@@ -1890,6 +1902,7 @@ function ideaField(id, field, value) {
     await api('PUT', `/api/ideas/${id}`, {[field]: value})
     const cached = (state.ideas||[]).find(i=>i.id===id)
     if (cached) cached[field] = value
+    if (field === 'notes') document.getElementById(`idea-card-${id}`)?.classList.toggle('has-note', !!value.trim())
     document.getElementById('ideas-count').textContent = (state.ideas||[]).length||''
   }, 600)
 }
