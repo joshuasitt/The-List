@@ -4,7 +4,7 @@ import sqlite3
 import urllib.request
 import urllib.parse
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, redirect, send_from_directory
+from flask import Flask, request, jsonify, render_template, redirect, send_from_directory, make_response
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -570,9 +570,20 @@ def set_setting(key):
 
 # ── FRONTEND ───────────────────────────────────────────────────────────────
 
+# Changes whenever a new version is deployed, so open tabs can tell they're stale.
+APP_VERSION = os.environ.get('RAILWAY_GIT_COMMIT_SHA') or str(int(os.path.getmtime(os.path.join(_HERE, 'templates', 'index.html'))))
+
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    resp = make_response(render_template('index.html', app_version=APP_VERSION))
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+
+@app.route('/api/version')
+def get_version():
+    return jsonify({'version': APP_VERSION})
 
 
 @app.route('/api/set-api-key', methods=['POST'])

@@ -856,6 +856,26 @@ function clearSelection() {
   updateSelectBar()
 }
 
+// ── STAY UP TO DATE ───────────────────────────────────────────────────────
+
+// A tab left open for days keeps running the old code after an update.
+// When you come back to the tab, check for a new version and reload — but
+// never mid-typing or while a delete can still be undone.
+const APP_VERSION = '{{ app_version }}'
+async function reloadIfStale() {
+  if (document.hidden) return
+  if (document.activeElement?.closest?.('input, textarea, [contenteditable="true"]')) return
+  if (_pendingDelete) return
+  try {
+    const res = await fetch('/api/version', {cache: 'no-store'})
+    const {version} = await res.json()
+    if (version && version !== APP_VERSION) location.reload()
+  } catch {}
+}
+document.addEventListener('visibilitychange', reloadIfStale)
+window.addEventListener('focus', reloadIfStale)
+setInterval(reloadIfStale, 10 * 60 * 1000)
+
 // ── UNDO ──────────────────────────────────────────────────────────────────
 
 // One history for the whole app, like a Google Doc: task changes and anything
@@ -1425,6 +1445,9 @@ async function renderWeek() {
         const t3HasNotes = t.notes && t.notes.trim()
         t3html += `<div class="top3-slot has-task group" id="task-${t.id}">
           <div class="top3-slot-head">
+            <div class="drag-handle" title="Drag to reorder">
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="11.5" r="1.2"/><circle cx="7" cy="11.5" r="1.2"/></svg>
+            </div>
             <span class="top3-num${i >= 3 ? ' top3-over' : ''}" ${i >= 3 ? 'title="Over your top 3 — demote or finish this"' : ''}>${i+1}</span>
             <div class="task-check ${t.completed?'done':''}" onclick="toggleTask(${t.id},${!t.completed})"></div>
             <span class="flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}"
@@ -1450,6 +1473,7 @@ async function renderWeek() {
       } else {
         t3html += `<div class="top3-slot">
           <div class="top3-slot-head">
+            <div class="drag-handle" style="visibility:hidden"></div>
             <span class="top3-num">${i+1}</span>
             <input class="flex-1 text-sm text-gray-400 bg-transparent border-none outline-none placeholder:text-gray-300"
               placeholder="Add priority ${i+1}…"
@@ -1992,6 +2016,8 @@ function initSortable() {
       group: 'master-tasks',
       animation: 150,
       handle: '.drag-handle',
+      // empty Top 3 slots are placeholders, not items
+      filter: '.top3-slot:not(.has-task)',
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       delay: 100,
