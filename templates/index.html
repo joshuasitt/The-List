@@ -2016,8 +2016,10 @@ function initSortable() {
       group: 'master-tasks',
       animation: 150,
       handle: '.drag-handle',
-      // empty Top 3 slots are placeholders, not items
+      // empty Top 3 slots are placeholders, not items — but they hold the
+      // input for a new priority, so don't swallow clicks on them
       filter: '.top3-slot:not(.has-task)',
+      preventOnFilter: false,
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       delay: 100,
