@@ -109,8 +109,11 @@
     .day-badge.is-today { background: #FEF3C7; color: #D97706; }
     .task-notes-wrap { display: none; }
     .task-notes-wrap.open { display: block; }
-    /* thin yellow line across the top of anything that has notes */
-    .has-note { box-shadow: inset 0 2px 0 #FCD34D; }
+    /* thin yellow line on top of the note icon when there are notes */
+    button.notes-icon.has-notes, .note-flag { position: relative; }
+    button.notes-icon.has-notes::before, .note-flag::before {
+      content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+      top: -1px; width: 12px; height: 2px; border-radius: 1px; background: #FBBF24; }
     .task-notes-input { width: 100%; border: none; outline: none; background: transparent; font-size: 12px; color: #6B7280; resize: none; line-height: 1.5; padding: 4px 0 2px 0; }
     .task-notes-input::placeholder { color: #D1D0CC; }
 
@@ -1874,7 +1877,7 @@ async function renderIdeas() {
         </button>
         <input value="${esc(i.content)}" oninput="ideaField(${i.id},'content',this.value)"
           class="flex-1 text-sm font-medium text-gray-800 bg-transparent outline-none" placeholder="Untitled thought">
-        ${hasNotes?`<span class="text-xs text-gray-300 flex-shrink-0" title="Has notes">•••</span>`:''}
+        ${hasNotes?`<span class="note-flag text-xs text-gray-300 flex-shrink-0" title="Has notes">•••</span>`:''}
         <span class="text-xs text-gray-300 flex-shrink-0">${new Date(i.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
         <button onclick="deleteIdea(${i.id})" class="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
